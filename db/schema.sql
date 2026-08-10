@@ -17,3 +17,11 @@ CREATE TABLE IF NOT EXISTS transactions (
   INDEX idx_date (`date`),
   INDEX idx_type (`type`)
 );
+
+CREATE TABLE IF NOT EXISTS categories (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL DEFAULT 1,
+  name VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_categories_user_id (user_id)
+);

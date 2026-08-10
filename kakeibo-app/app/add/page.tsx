@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function AddPage() {
+  const [categories, setCategories] = useState<any[]>([]);
   const [form, setForm] = useState({
     user_id: 1,
     date: '',
@@ -11,6 +12,13 @@ export default function AddPage() {
     amount: 0,
     memo: ''
   });
+
+  useEffect(() => {
+    fetch('/api/categories')
+      .then(res => res.json())
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, []);
 
   const submit = async () => {
     await fetch('/api/transactions', {
@@ -41,11 +49,15 @@ export default function AddPage() {
         <option value="expense">支出</option>
       </select>
 
-      <input
-        placeholder="カテゴリ"
+      <select
         value={form.category}
         onChange={(e) => setForm({ ...form, category: e.target.value })}
-      />
+      >
+        <option value="">カテゴリを選択</option>
+        {categories.map((c) => (
+          <option key={c.id} value={c.name}>{c.name}</option>
+        ))}
+      </select>
 
       <input
         type="number"
