@@ -6,6 +6,7 @@ export const db = await mysql.createConnection({
   user: process.env.DB_USER ?? 'root',
   password: process.env.DB_PASSWORD ?? 'root',
   database: process.env.DB_NAME ?? 'kakeibo',
+  charset: 'utf8mb4',
 });
 
 export async function query(sql: string, params?: any[]) {

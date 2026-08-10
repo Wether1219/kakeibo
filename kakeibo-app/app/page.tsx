@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import MonthlyChart from '@/components/MonthlyChart';
 import CategoryPieChart from '@/components/CategoryPieChart';
 import MonthlyLineChart from '@/components/MonthlyLineChart';
+import ExportAndDeleteButton from '@/components/ExportAndDeleteButton';
 
 export default function Home() {
   const [summary, setSummary] = useState<{ income: number; expense: number; balance: number } | null>(null);
@@ -82,6 +83,7 @@ export default function Home() {
         <a href="/api/export">
           <button>Excel出力（高度版）</button>
         </a>
+        <ExportAndDeleteButton />
       </div>
     </div>
   );
