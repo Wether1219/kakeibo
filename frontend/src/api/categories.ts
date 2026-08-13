@@ -15,12 +15,19 @@ export interface Category {
 
 // 認証実装までの暫定措置。フェーズ0でJWTベースのAPIクライアントに置き換える。
 const TEMP_HOUSEHOLD_ID = '1';
+// useTransactionForm.tsと同じキー（「自分」ユーザーの暫定選択）。
+const CURRENT_USER_KEY = 'kakeibo_current_user_id';
 
 function headers() {
-  return {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'x-household-id': TEMP_HOUSEHOLD_ID,
   };
+  const userId = localStorage.getItem(CURRENT_USER_KEY);
+  if (userId) {
+    headers['x-user-id'] = userId;
+  }
+  return headers;
 }
 
 export async function fetchCategories(type?: CategoryType): Promise<Category[]> {
