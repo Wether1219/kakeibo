@@ -59,6 +59,7 @@
 - [ ] フェーズ4: 変更履歴・エクスポート・仕上げ
   - [x] 変更履歴（audit_logsテーブル、`GET /audit-logs`）実装済み（2026-08-13）。`backend/src/services/auditLogService.ts`の`recordAuditLog`/`recordAuditLogs`（bulk用）で記録し、`diff_json`は`{ before, after }`形式（該当なしはundefined）。既存の各`serializeXxx`関数を再利用しBigInt/Decimalを安全にJSON化。household分離・`?targetTable=&limit=`（デフォルト50・上限200）に対応
   - [x] 既存のPUT/POST/DELETE系APIに監査ログ記録処理を追加（2026-08-13）：`categories`（POST/PUT/DELETE）、`transactions`（POST/PUT/DELETE）、`incomes`・`pre-savings`・`weekly-budgets`（PUT /bulk、upsert前の既存行をまとめて取得しitem毎にcreate/update判定）。`audit_logs.user_id`がNOT NULLのため、これまで操作者IDを受け取っていなかった`categories`の全操作・`incomes`/`pre-savings`/`weekly-budgets`のbulk・`transactions`のPUT/DELETEに`userMiddleware`（`x-user-id`必須）を追加（既存テストは`x-user-id`ヘッダー付与＋ユーザーfixture追加で対応済み）。単体テストは`backend/tests/auditLogs.test.ts`
+  - [x] CSV/Excelエクスポート（F15、`GET /export?format=csv|xlsx`）実装済み（2026-08-14）。`backend/src/services/exportService.ts`でhousehold単位のデータを取得しcsv文字列/xlsxバッファを生成、`backend/src/routes/export.ts`でファイル返却（householdMiddlewareのみ、更新系ではないためuserMiddleware不要）。xlsxは既存依存の`xlsx`パッケージ（移行スクリプトと共用）でマルチシート（費目マスタ／取引／収入／先取り貯金／週次予算）を生成。csvはマルチシート非対応のため取引一覧のみ出力（費目名・対象者名を人が読める形に変換、UTF-8 BOM付与でExcel文字化け対策）。assetsは未実装のためスコープ外。単体テストは`backend/tests/export.test.ts`（他世帯データが出力されないことを含む）。あわせてSC03（取引入力画面）の3タップ要件を設計レビューし、設計書3.1の2段階費目選択のままでは3タップを超えると判明したため、4タップ構成に方針変更のうえフェーズ1でSC03画面を実装（詳細は上記フェーズ1の該当行を参照）
 
 ### 補足（2026-08-13時点）
 - 開発用MySQLコンテナ（`kakeibo-mysql`）に、現行設計と不整合な旧`categories`/`transactions`テーブル（`household_id`なし、ダミーデータ16件）が残存していたため削除済み。バックアップは開発者のスクラッチ領域に保存（リポジトリ外）。今後同様の旧データが必要な場合は要相談。
