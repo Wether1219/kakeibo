@@ -50,8 +50,9 @@
   - [x] 費目マスタ（categoriesテーブル、`/categories` API、SC10画面）実装済み（2026-08-13）
   - [x] 取引入力（transactionsテーブル、`/transactions` CRUD API）実装済み（2026-08-13）。SC03画面（フロント）は未着手
   - [x] 収入・先取り貯金入力（incomes/pre_savingsテーブル、`/incomes`・`/pre-savings` の一覧取得＋一括更新API、SC05画面）実装済み（2026-08-13）。カテゴリのtype整合性チェック（income/pre_saving）・household分離を含む。SC05表示のため`users`テーブルに`display_name`・`household_id`を先行追加し、`GET /users`（household内一覧）も追加。フロントは`App.tsx`に簡易タブナビ（react-router未導入、暫定）で費目マスタ画面と切替表示
-  - [x] ダッシュボード（バックエンドのみ）：`GET /summary/monthly` API実装済み（2026-08-13）。`backend/src/services/summaryLogic.ts`に5.1按分（shared端数はcreatedBy側に+1円）・5.2週番号・5.3当月収支サマリ・5.4比率計算（ゼロ除算ガード）を純粋関数として実装し単体テスト済み（`tests/summaryLogic.test.ts`）。`summaryService.ts`でDB集計しAPI化、統合テストは`tests/summary.test.ts`。5.2週番号ロジックは実装済みだがまだどのAPIからも未使用（SC06週次予算はweekly_budgetsテーブル未作成のためフェーズ2で結線予定）。SC02画面（フロント）は未着手
+  - [x] ダッシュボード（バックエンドのみ）：`GET /summary/monthly` API実装済み（2026-08-13）。`backend/src/services/summaryLogic.ts`に5.1按分（shared端数はcreatedBy側に+1円）・5.2週番号・5.3当月収支サマリ・5.4比率計算（ゼロ除算ガード）を純粋関数として実装し単体テスト済み（`tests/summaryLogic.test.ts`）。`summaryService.ts`でDB集計しAPI化、統合テストは`tests/summary.test.ts`。SC02画面（フロント）は未着手
 - [ ] フェーズ2: 予算・集計（週次予算/年間推移/収支可視化）
+  - [x] 週次予算（weekly_budgetsテーブル、`/weekly-budgets`の一覧取得〔実績付き〕＋一括更新API）実装済み（2026-08-13）。テーブルは予算額のみ保持し、実績は`summaryLogic.ts`の`apportionTransactionAmount`（5.1按分・世帯全ユーザー分を合算）と`calculateWeekNumber`（5.2週番号）を再利用してtransactionsから都度集計（`weeklyBudgetService.ts`）。カテゴリのtype整合性チェック（variable_expense）・household分離を含む。`calculateWeekNumber`は月末が日曜の場合に第6週を返しうるためweekNoは1〜6を許容（設計書1.7節「1〜5」はTINYINTコメントであり上限ではない）。GETは月末を含む週まで費目×週の全組み合わせを返す（予算・実績が0件の週も含む、SC06の週表示自動切替に対応）。単体テストは`tests/weeklyBudgets.test.ts`。SC06画面（フロント）は未着手
 - [ ] フェーズ3: 資産管理・Excel移行
 - [ ] フェーズ4: 変更履歴・エクスポート・仕上げ
 
