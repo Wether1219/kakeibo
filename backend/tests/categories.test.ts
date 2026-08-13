@@ -165,4 +165,37 @@ describe('/api/v1/categories', () => {
     const found = listRes.body.find((c: { id: string }) => c.id === id);
     expect(found.isActive).toBe(false);
   });
+
+  it('無効化した費目と同名で再追加すると再有効化される（同じidのまま）', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/categories')
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
+      .send({ type: 'variable_expense', name: '交際費', icon: '🍻' });
+    const id = createRes.body.id;
+
+    const deleteRes = await request(app)
+      .delete(`/api/v1/categories/${id}`)
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString());
+    expect(deleteRes.status).toBe(204);
+
+    const recreateRes = await request(app)
+      .post('/api/v1/categories')
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
+      .send({ type: 'variable_expense', name: '交際費', icon: '🎉' });
+    expect(recreateRes.status).toBe(201);
+    expect(recreateRes.body).toMatchObject({
+      id,
+      name: '交際費',
+      icon: '🎉',
+      isActive: true,
+    });
+
+    const listRes = await request(app)
+      .get('/api/v1/categories')
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+    expect(listRes.body.filter((c: { name: string }) => c.name === '交際費')).toHaveLength(1);
+  });
 });

@@ -59,14 +59,17 @@ categoriesRouter.post('/', userMiddleware, async (req: HouseholdRequest, res) =>
     return;
   }
   try {
-    const category = await createCategory(req.householdId!, { type, name, icon });
+    const result = await createCategory(req.householdId!, { type, name, icon });
+    const { category } = result;
     await recordAuditLog({
       householdId: req.householdId!,
       userId: req.userId!,
       targetTable: 'categories',
       targetId: category.id,
-      action: 'create',
-      diff: { after: serializeCategory(category) },
+      action: result.reactivated ? 'update' : 'create',
+      diff: result.reactivated
+        ? { before: serializeCategory(result.before), after: serializeCategory(category) }
+        : { after: serializeCategory(category) },
     });
     res.status(201).json(serializeCategory(category));
   } catch (e) {

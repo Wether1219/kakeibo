@@ -15,8 +15,25 @@ export async function createCategory(
   householdId: bigint,
   data: { type: CategoryType; name: string; icon?: string | null }
 ) {
+  // householdId, type, nameの組でユニーク制約があるため、
+  // 無効化済み（isActive: false）の同名費目が残っている場合は新規作成できない。
+  // その場合は新規作成ではなく再有効化として扱う。
+  const existing = await prisma.category.findFirst({
+    where: { householdId, type: data.type, name: data.name },
+  });
+  if (existing) {
+    if (existing.isActive) {
+      throw new DuplicateCategoryError('同じ区分・名前の費目が既に存在します');
+    }
+    const after = await prisma.category.update({
+      where: { id: existing.id },
+      data: { isActive: true, icon: data.icon ?? existing.icon },
+    });
+    return { category: after, reactivated: true as const, before: existing };
+  }
+
   try {
-    return await prisma.category.create({
+    const category = await prisma.category.create({
       data: {
         householdId,
         type: data.type,
@@ -24,6 +41,7 @@ export async function createCategory(
         icon: data.icon ?? null,
       },
     });
+    return { category, reactivated: false as const };
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
       throw new DuplicateCategoryError('同じ区分・名前の費目が既に存在します');
