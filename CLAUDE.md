@@ -48,7 +48,7 @@
   - [ ] JWT認証（未着手。現状は`x-household-id`/`x-user-id`ヘッダーによる暫定household_id/user_id取得で代替。認証実装時に`backend/src/middlewares/household.ts`を差し替えること）。`users`テーブルに`email`/`password_hash`/`color_code`（設計書1.2節）は未追加で、認証実装時に追加すること
 - [ ] フェーズ1: コア機能（取引入力/収入・先取り貯金入力/ダッシュボード/費目マスタ）
   - [x] 費目マスタ（categoriesテーブル、`/categories` API、SC10画面）実装済み（2026-08-13）
-  - [x] 取引入力（transactionsテーブル、`/transactions` CRUD API）実装済み（2026-08-13）。SC03画面（フロント）は未着手
+  - [x] 取引入力（transactionsテーブル、`/transactions` CRUD API）実装済み（2026-08-13）。SC03画面（フロント）も実装済み（2026-08-14、`frontend/src/pages/TransactionInput.tsx`）。設計書3.1の2段階費目選択（固定費/変動費→費目）を維持しつつ、①区分→②費目→③対象者→④保存の4タップで完了する構成（金額はテンキー入力のためタップ数に含めない）。「自分」が誰かは認証未実装のため`localStorage`（`kakeibo_current_user_id`）で暫定管理し、対象者トグルの初期値・`x-user-id`ヘッダーに利用（`frontend/src/hooks/useTransactionForm.ts`、JWT認証実装時に置き換えること）。保存後は日付・対象者・金額・メモをリセットし連続入力に対応（区分・費目は直前の選択を維持し再入力を高速化）。Playwrightでdev環境（backend:3001 / frontend:5173）に対し実際にフォーム入力→保存→DB反映まで動作確認済み（コンソールエラーなし）
   - [x] 収入・先取り貯金入力（incomes/pre_savingsテーブル、`/incomes`・`/pre-savings` の一覧取得＋一括更新API、SC05画面）実装済み（2026-08-13）。カテゴリのtype整合性チェック（income/pre_saving）・household分離を含む。SC05表示のため`users`テーブルに`display_name`・`household_id`を先行追加し、`GET /users`（household内一覧）も追加。フロントは`App.tsx`に簡易タブナビ（react-router未導入、暫定）で費目マスタ画面と切替表示
   - [x] ダッシュボード（バックエンドのみ）：`GET /summary/monthly` API実装済み（2026-08-13）。`backend/src/services/summaryLogic.ts`に5.1按分（shared端数はcreatedBy側に+1円）・5.2週番号・5.3当月収支サマリ・5.4比率計算（ゼロ除算ガード）を純粋関数として実装し単体テスト済み（`tests/summaryLogic.test.ts`）。`summaryService.ts`でDB集計しAPI化、統合テストは`tests/summary.test.ts`。SC02画面（フロント）は未着手
 - [ ] フェーズ2: 予算・集計（週次予算/年間推移/収支可視化）
