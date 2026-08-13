@@ -9,12 +9,13 @@ datasource db {
 
 // households本体は別機能のスコープ。categoriesのFK整合性のための最小限のスタブ。
 model Household {
-  id           BigInt        @id @default(autoincrement())
-  categories   Category[]
-  transactions Transaction[]
-  incomes      Income[]
-  preSavings   PreSaving[]
-  users        User[]
+  id            BigInt        @id @default(autoincrement())
+  categories    Category[]
+  transactions  Transaction[]
+  incomes       Income[]
+  preSavings    PreSaving[]
+  weeklyBudgets WeeklyBudget[]
+  users         User[]
 
   @@map("households")
 }
@@ -54,6 +55,7 @@ model Category {
   transactions Transaction[]
   incomes      Income[]
   preSavings   PreSaving[]
+  weeklyBudgets WeeklyBudget[]
 
   @@unique([householdId, type, name])
   @@map("categories")
@@ -120,4 +122,20 @@ model PreSaving {
 
   @@unique([householdId, year, month, userId, categoryId])
   @@map("pre_savings")
+}
+
+// 実績はtransactionsから都度集計するため、本テーブルは予算額のみ保持する（docs/03_詳細設計書.md 1.7節）。
+model WeeklyBudget {
+  id           BigInt    @id @default(autoincrement())
+  householdId  BigInt    @map("household_id")
+  household    Household @relation(fields: [householdId], references: [id])
+  year         Int       @db.SmallInt
+  month        Int       @db.TinyInt
+  weekNo       Int       @map("week_no") @db.TinyInt
+  categoryId   BigInt    @map("category_id")
+  category     Category  @relation(fields: [categoryId], references: [id])
+  budgetAmount Decimal   @default(0) @map("budget_amount") @db.Decimal(10, 0)
+
+  @@unique([householdId, year, month, weekNo, categoryId])
+  @@map("weekly_budgets")
 }
