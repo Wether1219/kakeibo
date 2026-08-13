@@ -54,6 +54,8 @@
 - [ ] フェーズ2: 予算・集計（週次予算/年間推移/収支可視化）
   - [x] 週次予算（weekly_budgetsテーブル、`/weekly-budgets`の一覧取得〔実績付き〕＋一括更新API）実装済み（2026-08-13）。テーブルは予算額のみ保持し、実績は`summaryLogic.ts`の`apportionTransactionAmount`（5.1按分・世帯全ユーザー分を合算）と`calculateWeekNumber`（5.2週番号）を再利用してtransactionsから都度集計（`weeklyBudgetService.ts`）。カテゴリのtype整合性チェック（variable_expense）・household分離を含む。`calculateWeekNumber`は月末が日曜の場合に第6週を返しうるためweekNoは1〜6を許容（設計書1.7節「1〜5」はTINYINTコメントであり上限ではない）。GETは月末を含む週まで費目×週の全組み合わせを返す（予算・実績が0件の週も含む、SC06の週表示自動切替に対応）。単体テストは`tests/weeklyBudgets.test.ts`。SC06画面（フロント）は未着手
 - [ ] フェーズ3: 資産管理・Excel移行
+  - [x] Excelデータ移行スクリプト（`backend/src/migration/`）実装済み（2026-08-13）。docs/03_詳細設計書.md 6章に従い、費目マスタ→incomes→pre_savings→transactions→weekly_budgetsの順でテーブルごとに1関数（`importCategories.ts`等）を実装。CLIは`npm run migrate:excel -- <xlsmパス> <household_id>`（`runImport.ts`）。費目名セルは正規表現でアイコン/名前を分離（`splitIconName`、`excelUtil.ts`）。各月シートの年・月はシート名ではなくB1/B3セルの値を使用。取引の日付未入力行はスキップ（テンプレートの空行のため）。固定費・変動費で費目名が重複した場合は固定費側を優先マッピング（重複は現状未発生）。資産管理（assets/asset_balances）はテーブル未設計のためスコープ外・フェーズ3着手時に別途対応
+  - [x] 移行テスト（`backend/tests/excelMigration.test.ts`）：アップロード雛形（`backend/tests/fixtures/雛形_家計簿_第1_4版.xlsm`、費目名以外ほぼ空欄のテンプレート）を全12ヶ月移行し、件数（費目24・収入120・先取り貯金96・週次予算480）と、年間推移シートの収入・固定費・変動費セル値をDB集計値（月次シートのSUMIFS式と同じ集計条件をJSで再現）と全月・全費目で突合。テンプレートが空データのため実質0円同士の一致検証に留まるが、加えて27年1月シートの一部セルに実データを模した値をメモリ上で書き込み、移行・集計ロジックが非ゼロ値でも元Excelの計算式（固定費=本人分のみ、変動費=本人分+「両方」分/2）通りに動くことを検証済み
 - [ ] フェーズ4: 変更履歴・エクスポート・仕上げ
 
 ### 補足（2026-08-13時点）
