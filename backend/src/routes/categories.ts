@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { CategoryType } from '@prisma/client';
-import { HouseholdRequest, householdMiddleware } from '../middlewares/household';
+import { HouseholdRequest, householdMiddleware, userMiddleware } from '../middlewares/household';
 import {
   CategoryNotFoundError,
   DuplicateCategoryError,
@@ -9,6 +9,7 @@ import {
   listCategories,
   updateCategory,
 } from '../services/categoryService';
+import { recordAuditLog } from '../services/auditLogService';
 
 const CATEGORY_TYPES = Object.values(CategoryType);
 
@@ -51,7 +52,7 @@ categoriesRouter.get('/', async (req: HouseholdRequest, res) => {
   res.json(categories.map(serializeCategory));
 });
 
-categoriesRouter.post('/', async (req: HouseholdRequest, res) => {
+categoriesRouter.post('/', userMiddleware, async (req: HouseholdRequest, res) => {
   const { type, name, icon } = req.body ?? {};
   if (!isCategoryType(type) || typeof name !== 'string' || name.trim() === '') {
     res.status(400).json({ error: 'type, nameは必須です' });
@@ -59,6 +60,14 @@ categoriesRouter.post('/', async (req: HouseholdRequest, res) => {
   }
   try {
     const category = await createCategory(req.householdId!, { type, name, icon });
+    await recordAuditLog({
+      householdId: req.householdId!,
+      userId: req.userId!,
+      targetTable: 'categories',
+      targetId: category.id,
+      action: 'create',
+      diff: { after: serializeCategory(category) },
+    });
     res.status(201).json(serializeCategory(category));
   } catch (e) {
     if (e instanceof DuplicateCategoryError) {
@@ -69,7 +78,7 @@ categoriesRouter.post('/', async (req: HouseholdRequest, res) => {
   }
 });
 
-categoriesRouter.put('/:id', async (req: HouseholdRequest, res) => {
+categoriesRouter.put('/:id', userMiddleware, async (req: HouseholdRequest, res) => {
   if (!/^\d+$/.test(req.params.id)) {
     res.status(400).json({ error: 'idが不正です' });
     return;
@@ -84,12 +93,20 @@ categoriesRouter.put('/:id', async (req: HouseholdRequest, res) => {
     return;
   }
   try {
-    const category = await updateCategory(req.householdId!, BigInt(req.params.id), {
+    const { before, after } = await updateCategory(req.householdId!, BigInt(req.params.id), {
       name,
       icon,
       sortOrder,
     });
-    res.json(serializeCategory(category));
+    await recordAuditLog({
+      householdId: req.householdId!,
+      userId: req.userId!,
+      targetTable: 'categories',
+      targetId: after.id,
+      action: 'update',
+      diff: { before: serializeCategory(before), after: serializeCategory(after) },
+    });
+    res.json(serializeCategory(after));
   } catch (e) {
     if (e instanceof CategoryNotFoundError) {
       res.status(404).json({ error: e.message });
@@ -103,13 +120,21 @@ categoriesRouter.put('/:id', async (req: HouseholdRequest, res) => {
   }
 });
 
-categoriesRouter.delete('/:id', async (req: HouseholdRequest, res) => {
+categoriesRouter.delete('/:id', userMiddleware, async (req: HouseholdRequest, res) => {
   if (!/^\d+$/.test(req.params.id)) {
     res.status(400).json({ error: 'idが不正です' });
     return;
   }
   try {
-    await deactivateCategory(req.householdId!, BigInt(req.params.id));
+    const { before, after } = await deactivateCategory(req.householdId!, BigInt(req.params.id));
+    await recordAuditLog({
+      householdId: req.householdId!,
+      userId: req.userId!,
+      targetTable: 'categories',
+      targetId: after.id,
+      action: 'delete',
+      diff: { before: serializeCategory(before), after: serializeCategory(after) },
+    });
     res.status(204).send();
   } catch (e) {
     if (e instanceof CategoryNotFoundError) {

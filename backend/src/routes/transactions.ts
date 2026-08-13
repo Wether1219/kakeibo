@@ -10,6 +10,7 @@ import {
   listTransactions,
   updateTransaction,
 } from '../services/transactionService';
+import { recordAuditLog } from '../services/auditLogService';
 
 const SPLIT_TYPES = Object.values(SplitType);
 
@@ -109,6 +110,14 @@ transactionsRouter.post('/', userMiddleware, async (req: HouseholdRequest, res) 
   }
   try {
     const transaction = await createTransaction(req.householdId!, req.userId!, input);
+    await recordAuditLog({
+      householdId: req.householdId!,
+      userId: req.userId!,
+      targetTable: 'transactions',
+      targetId: transaction.id,
+      action: 'create',
+      diff: { after: serializeTransaction(transaction) },
+    });
     res.status(201).json(serializeTransaction(transaction));
   } catch (e) {
     if (e instanceof TransactionValidationError) {
@@ -119,7 +128,7 @@ transactionsRouter.post('/', userMiddleware, async (req: HouseholdRequest, res) 
   }
 });
 
-transactionsRouter.put('/:id', async (req: HouseholdRequest, res) => {
+transactionsRouter.put('/:id', userMiddleware, async (req: HouseholdRequest, res) => {
   if (!/^\d+$/.test(req.params.id)) {
     res.status(400).json({ error: 'idが不正です' });
     return;
@@ -130,8 +139,16 @@ transactionsRouter.put('/:id', async (req: HouseholdRequest, res) => {
     return;
   }
   try {
-    const transaction = await updateTransaction(req.householdId!, BigInt(req.params.id), input);
-    res.json(serializeTransaction(transaction));
+    const { before, after } = await updateTransaction(req.householdId!, BigInt(req.params.id), input);
+    await recordAuditLog({
+      householdId: req.householdId!,
+      userId: req.userId!,
+      targetTable: 'transactions',
+      targetId: after.id,
+      action: 'update',
+      diff: { before: serializeTransaction(before), after: serializeTransaction(after) },
+    });
+    res.json(serializeTransaction(after));
   } catch (e) {
     if (e instanceof TransactionNotFoundError) {
       res.status(404).json({ error: e.message });
@@ -145,13 +162,21 @@ transactionsRouter.put('/:id', async (req: HouseholdRequest, res) => {
   }
 });
 
-transactionsRouter.delete('/:id', async (req: HouseholdRequest, res) => {
+transactionsRouter.delete('/:id', userMiddleware, async (req: HouseholdRequest, res) => {
   if (!/^\d+$/.test(req.params.id)) {
     res.status(400).json({ error: 'idが不正です' });
     return;
   }
   try {
-    await deleteTransaction(req.householdId!, BigInt(req.params.id));
+    const { before } = await deleteTransaction(req.householdId!, BigInt(req.params.id));
+    await recordAuditLog({
+      householdId: req.householdId!,
+      userId: req.userId!,
+      targetTable: 'transactions',
+      targetId: before.id,
+      action: 'delete',
+      diff: { before: serializeTransaction(before) },
+    });
     res.status(204).send();
   } catch (e) {
     if (e instanceof TransactionNotFoundError) {

@@ -42,7 +42,7 @@ export async function updateCategory(
     throw new CategoryNotFoundError('費目が見つかりません');
   }
   try {
-    return await prisma.category.update({
+    const after = await prisma.category.update({
       where: { id },
       data: {
         ...(data.name !== undefined ? { name: data.name } : {}),
@@ -50,6 +50,7 @@ export async function updateCategory(
         ...(data.sortOrder !== undefined ? { sortOrder: data.sortOrder } : {}),
       },
     });
+    return { before: existing, after };
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
       throw new DuplicateCategoryError('同じ区分・名前の費目が既に存在します');
@@ -63,5 +64,6 @@ export async function deactivateCategory(householdId: bigint, id: bigint) {
   if (!existing) {
     throw new CategoryNotFoundError('費目が見つかりません');
   }
-  await prisma.category.update({ where: { id }, data: { isActive: false } });
+  const after = await prisma.category.update({ where: { id }, data: { isActive: false } });
+  return { before: existing, after };
 }

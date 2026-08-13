@@ -6,6 +6,7 @@ import { preSavingsRouter } from './routes/preSavings';
 import { usersRouter } from './routes/users';
 import { summaryRouter } from './routes/summary';
 import { weeklyBudgetsRouter } from './routes/weeklyBudgets';
+import { auditLogsRouter } from './routes/auditLogs';
 
 export function createApp() {
   const app = express();
@@ -17,5 +18,6 @@ export function createApp() {
   app.use('/api/v1/users', usersRouter);
   app.use('/api/v1/summary', summaryRouter);
   app.use('/api/v1/weekly-budgets', weeklyBudgetsRouter);
+  app.use('/api/v1/audit-logs', auditLogsRouter);
   return app;
 }

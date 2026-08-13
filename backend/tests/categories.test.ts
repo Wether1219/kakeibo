@@ -5,10 +5,14 @@ import { prisma } from '../src/prisma';
 
 const TEST_HOUSEHOLD_ID = 999999n;
 const OTHER_HOUSEHOLD_ID = 999998n;
+const USER_ID = 999989n;
+const OTHER_USER_ID = 999988n;
 const app = createApp();
 
 async function resetHousehold(id: bigint) {
+  await prisma.auditLog.deleteMany({ where: { householdId: id } });
   await prisma.category.deleteMany({ where: { householdId: id } });
+  await prisma.user.deleteMany({ where: { householdId: id } });
   await prisma.household.deleteMany({ where: { id } });
   await prisma.household.create({ data: { id } });
 }
@@ -16,6 +20,13 @@ async function resetHousehold(id: bigint) {
 beforeAll(async () => {
   await resetHousehold(TEST_HOUSEHOLD_ID);
   await resetHousehold(OTHER_HOUSEHOLD_ID);
+  await prisma.user.deleteMany({ where: { id: { in: [USER_ID, OTHER_USER_ID] } } });
+  await prisma.user.createMany({
+    data: [
+      { id: USER_ID, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう' },
+      { id: OTHER_USER_ID, householdId: OTHER_HOUSEHOLD_ID, displayName: 'みらの' },
+    ],
+  });
 });
 
 beforeEach(async () => {
@@ -24,8 +35,10 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await prisma.auditLog.deleteMany({ where: { householdId: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } } });
   await prisma.category.deleteMany({ where: { householdId: TEST_HOUSEHOLD_ID } });
   await prisma.category.deleteMany({ where: { householdId: OTHER_HOUSEHOLD_ID } });
+  await prisma.user.deleteMany({ where: { id: { in: [USER_ID, OTHER_USER_ID] } } });
   await prisma.household.deleteMany({ where: { id: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } } });
   await prisma.$disconnect();
 });
@@ -40,6 +53,7 @@ describe('/api/v1/categories', () => {
     const createRes = await request(app)
       .post('/api/v1/categories')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send({ type: 'variable_expense', name: '食費', icon: '🍙' });
     expect(createRes.status).toBe(201);
     expect(createRes.body).toMatchObject({
@@ -61,10 +75,12 @@ describe('/api/v1/categories', () => {
     await request(app)
       .post('/api/v1/categories')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send({ type: 'variable_expense', name: '食費' });
     await request(app)
       .post('/api/v1/categories')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send({ type: 'income', name: '給与' });
 
     const res = await request(app)
@@ -79,10 +95,12 @@ describe('/api/v1/categories', () => {
     await request(app)
       .post('/api/v1/categories')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send({ type: 'variable_expense', name: '食費' });
     const res = await request(app)
       .post('/api/v1/categories')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send({ type: 'variable_expense', name: '食費' });
     expect(res.status).toBe(409);
   });
@@ -91,12 +109,14 @@ describe('/api/v1/categories', () => {
     const createRes = await request(app)
       .post('/api/v1/categories')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send({ type: 'fixed_expense', name: '家賃' });
     const id = createRes.body.id;
 
     const updateRes = await request(app)
       .put(`/api/v1/categories/${id}`)
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send({ name: '住居費', icon: '🏠', sortOrder: 3 });
 
     expect(updateRes.status).toBe(200);
@@ -107,18 +127,21 @@ describe('/api/v1/categories', () => {
     const createRes = await request(app)
       .post('/api/v1/categories')
       .set('x-household-id', OTHER_HOUSEHOLD_ID.toString())
+      .set('x-user-id', OTHER_USER_ID.toString())
       .send({ type: 'fixed_expense', name: '光熱費' });
     const id = createRes.body.id;
 
     const updateRes = await request(app)
       .put(`/api/v1/categories/${id}`)
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send({ name: '不正更新' });
     expect(updateRes.status).toBe(404);
 
     const deleteRes = await request(app)
       .delete(`/api/v1/categories/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString());
     expect(deleteRes.status).toBe(404);
   });
 
@@ -126,12 +149,14 @@ describe('/api/v1/categories', () => {
     const createRes = await request(app)
       .post('/api/v1/categories')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send({ type: 'variable_expense', name: '娯楽費' });
     const id = createRes.body.id;
 
     const deleteRes = await request(app)
       .delete(`/api/v1/categories/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString());
     expect(deleteRes.status).toBe(204);
 
     const listRes = await request(app)

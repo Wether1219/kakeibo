@@ -54,12 +54,33 @@ export async function listPreSavings(
   });
 }
 
+function preSavingKey(i: { year: number; month: number; userId: bigint; categoryId: bigint }) {
+  return `${i.year}:${i.month}:${i.userId}:${i.categoryId}`;
+}
+
+// 監査ログのbefore/after記録のため、upsert前の既存行をまとめて取得し結果と対にして返す
 export async function bulkUpsertPreSavings(householdId: bigint, items: PreSavingInput[]) {
   items.forEach(validateInput);
   for (const item of items) {
     await assertPreSavingCategory(householdId, item.categoryId);
   }
-  return prisma.$transaction(
+  const existingRows =
+    items.length === 0
+      ? []
+      : await prisma.preSaving.findMany({
+          where: {
+            householdId,
+            OR: items.map((item) => ({
+              year: item.year,
+              month: item.month,
+              userId: item.userId,
+              categoryId: item.categoryId,
+            })),
+          },
+        });
+  const existingMap = new Map(existingRows.map((row) => [preSavingKey(row), row]));
+
+  const results = await prisma.$transaction(
     items.map((item) =>
       prisma.preSaving.upsert({
         where: {
@@ -84,4 +105,9 @@ export async function bulkUpsertPreSavings(householdId: bigint, items: PreSaving
       })
     )
   );
+
+  return results.map((result, idx) => ({
+    result,
+    before: existingMap.get(preSavingKey(items[idx])) ?? null,
+  }));
 }

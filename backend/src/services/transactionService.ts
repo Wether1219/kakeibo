@@ -83,7 +83,7 @@ export async function updateTransaction(
   if (!existing) {
     throw new TransactionNotFoundError('取引が見つかりません');
   }
-  return prisma.transaction.update({
+  const after = await prisma.transaction.update({
     where: { id },
     data: {
       transactionDate: new Date(data.transactionDate),
@@ -94,6 +94,7 @@ export async function updateTransaction(
       memo: data.memo ?? null,
     },
   });
+  return { before: existing, after };
 }
 
 export async function deleteTransaction(householdId: bigint, id: bigint) {
@@ -102,4 +103,5 @@ export async function deleteTransaction(householdId: bigint, id: bigint) {
     throw new TransactionNotFoundError('取引が見つかりません');
   }
   await prisma.transaction.delete({ where: { id } });
+  return { before: existing };
 }

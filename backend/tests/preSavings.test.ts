@@ -14,6 +14,7 @@ let incomeCategoryId: string;
 const currentYear = new Date().getFullYear();
 
 async function resetHousehold(id: bigint) {
+  await prisma.auditLog.deleteMany({ where: { householdId: id } });
   await prisma.preSaving.deleteMany({ where: { householdId: id } });
   await prisma.category.deleteMany({ where: { householdId: id } });
   await prisma.user.deleteMany({ where: { householdId: id } });
@@ -47,6 +48,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await prisma.auditLog.deleteMany({ where: { householdId: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } } });
   await prisma.preSaving.deleteMany({
     where: { householdId: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } },
   });
@@ -78,6 +80,7 @@ describe('/api/v1/pre-savings', () => {
     const putRes = await request(app)
       .put('/api/v1/pre-savings/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send([baseItem()]);
     expect(putRes.status).toBe(200);
     expect(putRes.body).toHaveLength(1);
@@ -101,6 +104,7 @@ describe('/api/v1/pre-savings', () => {
     const putRes = await request(app)
       .put('/api/v1/pre-savings/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send([{ year: currentYear, month: 5, userId: USER_ID.toString(), categoryId: preSavingCategoryId, actualAmount: 30000 }]);
     expect(putRes.status).toBe(200);
     expect(putRes.body[0].budgetAmount).toBe(0);
@@ -111,10 +115,12 @@ describe('/api/v1/pre-savings', () => {
     await request(app)
       .put('/api/v1/pre-savings/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send([baseItem({ actualAmount: 10000 })]);
     const putRes = await request(app)
       .put('/api/v1/pre-savings/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send([baseItem({ actualAmount: 40000 })]);
     expect(putRes.body).toHaveLength(1);
     expect(putRes.body[0].actualAmount).toBe(40000);
@@ -129,6 +135,7 @@ describe('/api/v1/pre-savings', () => {
     const res = await request(app)
       .put('/api/v1/pre-savings/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send([baseItem({ categoryId: incomeCategoryId })]);
     expect(res.status).toBe(400);
   });
@@ -137,6 +144,7 @@ describe('/api/v1/pre-savings', () => {
     const res = await request(app)
       .put('/api/v1/pre-savings/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send([baseItem({ month: 0 })]);
     expect(res.status).toBe(400);
   });
@@ -148,6 +156,7 @@ describe('/api/v1/pre-savings', () => {
     await request(app)
       .put('/api/v1/pre-savings/bulk')
       .set('x-household-id', OTHER_HOUSEHOLD_ID.toString())
+      .set('x-user-id', OTHER_USER_ID.toString())
       .send([baseItem({ userId: OTHER_USER_ID.toString(), categoryId: otherCategory.id.toString() })]);
 
     const listRes = await request(app)

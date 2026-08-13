@@ -14,6 +14,7 @@ let expenseCategoryId: string;
 const currentYear = new Date().getFullYear();
 
 async function resetHousehold(id: bigint) {
+  await prisma.auditLog.deleteMany({ where: { householdId: id } });
   await prisma.income.deleteMany({ where: { householdId: id } });
   await prisma.category.deleteMany({ where: { householdId: id } });
   await prisma.user.deleteMany({ where: { householdId: id } });
@@ -47,6 +48,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await prisma.auditLog.deleteMany({ where: { householdId: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } } });
   await prisma.income.deleteMany({
     where: { householdId: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } },
   });
@@ -77,6 +79,7 @@ describe('/api/v1/incomes', () => {
     const putRes = await request(app)
       .put('/api/v1/incomes/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send([baseItem()]);
     expect(putRes.status).toBe(200);
     expect(putRes.body).toHaveLength(1);
@@ -100,10 +103,12 @@ describe('/api/v1/incomes', () => {
     await request(app)
       .put('/api/v1/incomes/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send([baseItem({ amount: 100000 })]);
     const putRes = await request(app)
       .put('/api/v1/incomes/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send([baseItem({ amount: 250000 })]);
     expect(putRes.status).toBe(200);
     expect(putRes.body).toHaveLength(1);
@@ -119,6 +124,7 @@ describe('/api/v1/incomes', () => {
     const res = await request(app)
       .put('/api/v1/incomes/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send([baseItem({ categoryId: expenseCategoryId })]);
     expect(res.status).toBe(400);
   });
@@ -127,6 +133,7 @@ describe('/api/v1/incomes', () => {
     const res = await request(app)
       .put('/api/v1/incomes/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send([baseItem({ month: 13 })]);
     expect(res.status).toBe(400);
   });
@@ -138,6 +145,7 @@ describe('/api/v1/incomes', () => {
     const res = await request(app)
       .put('/api/v1/incomes/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send([baseItem({ categoryId: otherCategory.id.toString() })]);
     expect(res.status).toBe(400);
     await prisma.category.delete({ where: { id: otherCategory.id } });
@@ -147,6 +155,7 @@ describe('/api/v1/incomes', () => {
     await request(app)
       .put('/api/v1/incomes/bulk')
       .set('x-household-id', OTHER_HOUSEHOLD_ID.toString())
+      .set('x-user-id', OTHER_USER_ID.toString())
       .send([
         baseItem({
           userId: OTHER_USER_ID.toString(),
