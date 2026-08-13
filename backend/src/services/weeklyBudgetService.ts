@@ -40,12 +40,33 @@ async function assertVariableExpenseCategory(householdId: bigint, categoryId: bi
   }
 }
 
+function weeklyBudgetKey(i: { year: number; month: number; weekNo: number; categoryId: bigint }) {
+  return `${i.year}:${i.month}:${i.weekNo}:${i.categoryId}`;
+}
+
+// 監査ログのbefore/after記録のため、upsert前の既存行をまとめて取得し結果と対にして返す
 export async function bulkUpsertWeeklyBudgets(householdId: bigint, items: WeeklyBudgetInput[]) {
   items.forEach(validateInput);
   for (const item of items) {
     await assertVariableExpenseCategory(householdId, item.categoryId);
   }
-  return prisma.$transaction(
+  const existingRows =
+    items.length === 0
+      ? []
+      : await prisma.weeklyBudget.findMany({
+          where: {
+            householdId,
+            OR: items.map((item) => ({
+              year: item.year,
+              month: item.month,
+              weekNo: item.weekNo,
+              categoryId: item.categoryId,
+            })),
+          },
+        });
+  const existingMap = new Map(existingRows.map((row) => [weeklyBudgetKey(row), row]));
+
+  const results = await prisma.$transaction(
     items.map((item) =>
       prisma.weeklyBudget.upsert({
         where: {
@@ -69,6 +90,11 @@ export async function bulkUpsertWeeklyBudgets(householdId: bigint, items: Weekly
       })
     )
   );
+
+  return results.map((result, idx) => ({
+    result,
+    before: existingMap.get(weeklyBudgetKey(items[idx])) ?? null,
+  }));
 }
 
 function monthRange(year: number, month: number) {

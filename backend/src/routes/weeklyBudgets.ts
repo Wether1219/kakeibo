@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { HouseholdRequest, householdMiddleware } from '../middlewares/household';
+import { HouseholdRequest, householdMiddleware, userMiddleware } from '../middlewares/household';
 import {
   WeeklyBudgetInput,
   WeeklyBudgetValidationError,
   bulkUpsertWeeklyBudgets,
   listWeeklyBudgetsWithActual,
 } from '../services/weeklyBudgetService';
+import { recordAuditLogs } from '../services/auditLogService';
 
 function isPositiveIntString(value: unknown): value is string {
   return typeof value === 'string' && /^\d+$/.test(value);
@@ -73,7 +74,7 @@ weeklyBudgetsRouter.get('/', async (req: HouseholdRequest, res) => {
   }
 });
 
-weeklyBudgetsRouter.put('/bulk', async (req: HouseholdRequest, res) => {
+weeklyBudgetsRouter.put('/bulk', userMiddleware, async (req: HouseholdRequest, res) => {
   if (!Array.isArray(req.body)) {
     res.status(400).json({ error: 'リクエストボディは配列である必要があります' });
     return;
@@ -84,8 +85,21 @@ weeklyBudgetsRouter.put('/bulk', async (req: HouseholdRequest, res) => {
     return;
   }
   try {
-    const weeklyBudgets = await bulkUpsertWeeklyBudgets(req.householdId!, items as WeeklyBudgetInput[]);
-    res.json(weeklyBudgets.map(serializeWeeklyBudget));
+    const upserted = await bulkUpsertWeeklyBudgets(req.householdId!, items as WeeklyBudgetInput[]);
+    await recordAuditLogs(
+      upserted.map(({ result, before }) => ({
+        householdId: req.householdId!,
+        userId: req.userId!,
+        targetTable: 'weekly_budgets',
+        targetId: result.id,
+        action: before ? ('update' as const) : ('create' as const),
+        diff: {
+          before: before ? serializeWeeklyBudget(before) : undefined,
+          after: serializeWeeklyBudget(result),
+        },
+      }))
+    );
+    res.json(upserted.map(({ result }) => serializeWeeklyBudget(result)));
   } catch (e) {
     if (e instanceof WeeklyBudgetValidationError) {
       res.status(400).json({ error: e.message });

@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { HouseholdRequest, householdMiddleware } from '../middlewares/household';
+import { HouseholdRequest, householdMiddleware, userMiddleware } from '../middlewares/household';
 import {
   IncomeInput,
   IncomeValidationError,
   bulkUpsertIncomes,
   listIncomes,
 } from '../services/incomeService';
+import { recordAuditLogs } from '../services/auditLogService';
 
 function isPositiveIntString(value: unknown): value is string {
   return typeof value === 'string' && /^\d+$/.test(value);
@@ -75,7 +76,7 @@ incomesRouter.get('/', async (req: HouseholdRequest, res) => {
   res.json(incomes.map(serializeIncome));
 });
 
-incomesRouter.put('/bulk', async (req: HouseholdRequest, res) => {
+incomesRouter.put('/bulk', userMiddleware, async (req: HouseholdRequest, res) => {
   if (!Array.isArray(req.body)) {
     res.status(400).json({ error: 'リクエストボディは配列である必要があります' });
     return;
@@ -86,8 +87,21 @@ incomesRouter.put('/bulk', async (req: HouseholdRequest, res) => {
     return;
   }
   try {
-    const incomes = await bulkUpsertIncomes(req.householdId!, items as IncomeInput[]);
-    res.json(incomes.map(serializeIncome));
+    const upserted = await bulkUpsertIncomes(req.householdId!, items as IncomeInput[]);
+    await recordAuditLogs(
+      upserted.map(({ result, before }) => ({
+        householdId: req.householdId!,
+        userId: req.userId!,
+        targetTable: 'incomes',
+        targetId: result.id,
+        action: before ? ('update' as const) : ('create' as const),
+        diff: {
+          before: before ? serializeIncome(before) : undefined,
+          after: serializeIncome(result),
+        },
+      }))
+    );
+    res.json(upserted.map(({ result }) => serializeIncome(result)));
   } catch (e) {
     if (e instanceof IncomeValidationError) {
       res.status(400).json({ error: e.message });

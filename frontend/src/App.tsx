@@ -2,19 +2,21 @@ import { useState } from 'react';
 import { CategoryMaster } from './pages/CategoryMaster';
 import { IncomeAndPreSaving } from './pages/IncomeAndPreSaving';
 import { WeeklyBudget } from './pages/WeeklyBudget';
+import { TransactionInput } from './pages/TransactionInput';
 
-type Screen = 'income' | 'weeklyBudget' | 'categoryMaster';
+type Screen = 'transaction' | 'income' | 'weeklyBudget' | 'categoryMaster';
 
 const SCREENS: { key: Screen; label: string }[] = [
+  { key: 'transaction', label: '取引入力' },
   { key: 'income', label: '収入・先取り貯金入力' },
   { key: 'weeklyBudget', label: '週次予算設定' },
   { key: 'categoryMaster', label: '費目マスタ管理' },
 ];
 
-// 他画面(SC01〜SC04, SC07〜SC09, SC11)は未実装のため、簡易ナビで実装済み画面のみ切り替える。
+// 他画面(SC01, SC02, SC04, SC07〜SC09, SC11)は未実装のため、簡易ナビで実装済み画面のみ切り替える。
 // ルーティングライブラリはまだ導入していないため、フェーズ1完了時に react-router 等へ置き換え予定。
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('income');
+  const [screen, setScreen] = useState<Screen>('transaction');
 
   return (
     <div>
@@ -36,6 +38,7 @@ export default function App() {
           ))}
         </div>
       </nav>
+      {screen === 'transaction' && <TransactionInput />}
       {screen === 'income' && <IncomeAndPreSaving />}
       {screen === 'weeklyBudget' && <WeeklyBudget />}
       {screen === 'categoryMaster' && <CategoryMaster />}

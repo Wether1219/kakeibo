@@ -13,6 +13,7 @@ let categoryId: string;
 const currentYear = new Date().getFullYear();
 
 async function resetHousehold(id: bigint) {
+  await prisma.auditLog.deleteMany({ where: { householdId: id } });
   await prisma.transaction.deleteMany({ where: { householdId: id } });
   await prisma.category.deleteMany({ where: { householdId: id } });
   await prisma.user.deleteMany({ where: { householdId: id } });
@@ -42,6 +43,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await prisma.auditLog.deleteMany({ where: { householdId: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } } });
   await prisma.transaction.deleteMany({
     where: { householdId: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } },
   });
@@ -170,6 +172,7 @@ describe('/api/v1/transactions', () => {
     const updateRes = await request(app)
       .put(`/api/v1/transactions/${id}`)
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send(baseBody({ amount: 2000, memo: '更新後' }));
     expect(updateRes.status).toBe(200);
     expect(updateRes.body).toMatchObject({ amount: 2000, memo: '更新後' });
@@ -189,12 +192,14 @@ describe('/api/v1/transactions', () => {
     const updateRes = await request(app)
       .put(`/api/v1/transactions/${id}`)
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
       .send(baseBody());
     expect(updateRes.status).toBe(404);
 
     const deleteRes = await request(app)
       .delete(`/api/v1/transactions/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString());
     expect(deleteRes.status).toBe(404);
 
     await prisma.transaction.deleteMany({ where: { householdId: OTHER_HOUSEHOLD_ID } });
@@ -211,7 +216,8 @@ describe('/api/v1/transactions', () => {
 
     const deleteRes = await request(app)
       .delete(`/api/v1/transactions/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString());
     expect(deleteRes.status).toBe(204);
 
     const listRes = await request(app)

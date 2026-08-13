@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { HouseholdRequest, householdMiddleware } from '../middlewares/household';
+import { HouseholdRequest, householdMiddleware, userMiddleware } from '../middlewares/household';
 import {
   PreSavingInput,
   PreSavingValidationError,
   bulkUpsertPreSavings,
   listPreSavings,
 } from '../services/preSavingService';
+import { recordAuditLogs } from '../services/auditLogService';
 
 function isPositiveIntString(value: unknown): value is string {
   return typeof value === 'string' && /^\d+$/.test(value);
@@ -80,7 +81,7 @@ preSavingsRouter.get('/', async (req: HouseholdRequest, res) => {
   res.json(preSavings.map(serializePreSaving));
 });
 
-preSavingsRouter.put('/bulk', async (req: HouseholdRequest, res) => {
+preSavingsRouter.put('/bulk', userMiddleware, async (req: HouseholdRequest, res) => {
   if (!Array.isArray(req.body)) {
     res.status(400).json({ error: 'リクエストボディは配列である必要があります' });
     return;
@@ -91,8 +92,21 @@ preSavingsRouter.put('/bulk', async (req: HouseholdRequest, res) => {
     return;
   }
   try {
-    const preSavings = await bulkUpsertPreSavings(req.householdId!, items as PreSavingInput[]);
-    res.json(preSavings.map(serializePreSaving));
+    const upserted = await bulkUpsertPreSavings(req.householdId!, items as PreSavingInput[]);
+    await recordAuditLogs(
+      upserted.map(({ result, before }) => ({
+        householdId: req.householdId!,
+        userId: req.userId!,
+        targetTable: 'pre_savings',
+        targetId: result.id,
+        action: before ? ('update' as const) : ('create' as const),
+        diff: {
+          before: before ? serializePreSaving(before) : undefined,
+          after: serializePreSaving(result),
+        },
+      }))
+    );
+    res.json(upserted.map(({ result }) => serializePreSaving(result)));
   } catch (e) {
     if (e instanceof PreSavingValidationError) {
       res.status(400).json({ error: e.message });

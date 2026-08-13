@@ -16,6 +16,7 @@ model Household {
   preSavings    PreSaving[]
   weeklyBudgets WeeklyBudget[]
   users         User[]
+  auditLogs     AuditLog[]
 
   @@map("households")
 }
@@ -31,6 +32,7 @@ model User {
   transactionsCreatedBy Transaction[] @relation("TransactionCreatedBy")
   incomes               Income[]
   preSavings            PreSaving[]
+  auditLogs             AuditLog[]
 
   @@map("users")
 }
@@ -138,4 +140,26 @@ model WeeklyBudget {
 
   @@unique([householdId, year, month, weekNo, categoryId])
   @@map("weekly_budgets")
+}
+
+enum AuditAction {
+  create
+  update
+  delete
+}
+
+model AuditLog {
+  id          BigInt      @id @default(autoincrement())
+  householdId BigInt      @map("household_id")
+  household   Household   @relation(fields: [householdId], references: [id])
+  userId      BigInt      @map("user_id")
+  user        User        @relation(fields: [userId], references: [id])
+  targetTable String      @map("target_table") @db.VarChar(50)
+  targetId    BigInt      @map("target_id")
+  action      AuditAction
+  diffJson    Json?       @map("diff_json")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  @@index([householdId, targetTable])
+  @@map("audit_logs")
 }

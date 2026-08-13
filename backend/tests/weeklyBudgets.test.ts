@@ -17,6 +17,7 @@ let variableCategoryId: string;
 let incomeCategoryId: string;
 
 async function resetHousehold(id: bigint) {
+  await prisma.auditLog.deleteMany({ where: { householdId: id } });
   await prisma.weeklyBudget.deleteMany({ where: { householdId: id } });
   await prisma.transaction.deleteMany({ where: { householdId: id } });
   await prisma.category.deleteMany({ where: { householdId: id } });
@@ -26,6 +27,9 @@ async function resetHousehold(id: bigint) {
 }
 
 beforeAll(async () => {
+  // OTHER_HOUSEHOLD_ID宛のテストでもUSER_A/USER_Bを操作者として使うため、
+  // どちらかのhouseholdIdだけでresetすると相手側に残る監査ログのFKで失敗しうる。先に両方分をまとめて削除する。
+  await prisma.auditLog.deleteMany({ where: { householdId: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } } });
   await resetHousehold(TEST_HOUSEHOLD_ID);
   await resetHousehold(OTHER_HOUSEHOLD_ID);
   await prisma.user.deleteMany({ where: { id: { in: [USER_A, USER_B] } } });
@@ -53,6 +57,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await prisma.auditLog.deleteMany({ where: { householdId: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } } });
   await prisma.weeklyBudget.deleteMany({
     where: { householdId: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } },
   });
@@ -93,6 +98,7 @@ describe('/api/v1/weekly-budgets', () => {
     const putRes = await request(app)
       .put('/api/v1/weekly-budgets/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_A.toString())
       .send([baseItem(), baseItem({ weekNo: 2, budgetAmount: 3000 })]);
     expect(putRes.status).toBe(200);
     expect(putRes.body).toHaveLength(2);
@@ -107,6 +113,7 @@ describe('/api/v1/weekly-budgets', () => {
     const updateRes = await request(app)
       .put('/api/v1/weekly-budgets/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_A.toString())
       .send([baseItem({ budgetAmount: 6000 })]);
     expect(updateRes.body).toHaveLength(1);
     expect(updateRes.body[0].budgetAmount).toBe(6000);
@@ -123,6 +130,7 @@ describe('/api/v1/weekly-budgets', () => {
     const res = await request(app)
       .put('/api/v1/weekly-budgets/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_A.toString())
       .send([baseItem({ categoryId: incomeCategoryId })]);
     expect(res.status).toBe(400);
   });
@@ -131,12 +139,14 @@ describe('/api/v1/weekly-budgets', () => {
     const resZero = await request(app)
       .put('/api/v1/weekly-budgets/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_A.toString())
       .send([baseItem({ weekNo: 0 })]);
     expect(resZero.status).toBe(400);
 
     const resSeven = await request(app)
       .put('/api/v1/weekly-budgets/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_A.toString())
       .send([baseItem({ weekNo: 7 })]);
     expect(resSeven.status).toBe(400);
   });
@@ -148,6 +158,7 @@ describe('/api/v1/weekly-budgets', () => {
     await request(app)
       .put('/api/v1/weekly-budgets/bulk')
       .set('x-household-id', OTHER_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_A.toString())
       .send([baseItem({ categoryId: otherCategory.id.toString() })]);
 
     const listRes = await request(app)
@@ -164,6 +175,7 @@ describe('/api/v1/weekly-budgets', () => {
     await request(app)
       .put('/api/v1/weekly-budgets/bulk')
       .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_A.toString())
       .send([
         baseItem({ weekNo: 1, budgetAmount: 1000 }),
         baseItem({ weekNo: 2, budgetAmount: 800 }),

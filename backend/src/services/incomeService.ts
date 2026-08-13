@@ -50,12 +50,33 @@ export async function listIncomes(
   });
 }
 
+function incomeKey(i: { year: number; month: number; userId: bigint; categoryId: bigint }) {
+  return `${i.year}:${i.month}:${i.userId}:${i.categoryId}`;
+}
+
+// 監査ログのbefore/after記録のため、upsert前の既存行をまとめて取得し結果と対にして返す
 export async function bulkUpsertIncomes(householdId: bigint, items: IncomeInput[]) {
   items.forEach(validateInput);
   for (const item of items) {
     await assertIncomeCategory(householdId, item.categoryId);
   }
-  return prisma.$transaction(
+  const existingRows =
+    items.length === 0
+      ? []
+      : await prisma.income.findMany({
+          where: {
+            householdId,
+            OR: items.map((item) => ({
+              year: item.year,
+              month: item.month,
+              userId: item.userId,
+              categoryId: item.categoryId,
+            })),
+          },
+        });
+  const existingMap = new Map(existingRows.map((row) => [incomeKey(row), row]));
+
+  const results = await prisma.$transaction(
     items.map((item) =>
       prisma.income.upsert({
         where: {
@@ -79,4 +100,9 @@ export async function bulkUpsertIncomes(householdId: bigint, items: IncomeInput[
       })
     )
   );
+
+  return results.map((result, idx) => ({
+    result,
+    before: existingMap.get(incomeKey(items[idx])) ?? null,
+  }));
 }
