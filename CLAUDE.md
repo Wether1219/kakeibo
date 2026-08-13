@@ -44,7 +44,19 @@
 
 ## 進捗（Claude Codeが実装完了ごとに追記すること）
 - [ ] フェーズ0: 環境構築・認証
+  - [x] docker-compose.yml / backend・frontend初期構成（package.json, tsconfig, Prisma, Vite+Tailwind）
+  - [ ] JWT認証（未着手。現状は`x-household-id`/`x-user-id`ヘッダーによる暫定household_id/user_id取得で代替。認証実装時に`backend/src/middlewares/household.ts`を差し替えること）。`users`テーブルに`email`/`password_hash`/`color_code`（設計書1.2節）は未追加で、認証実装時に追加すること
 - [ ] フェーズ1: コア機能（取引入力/収入・先取り貯金入力/ダッシュボード/費目マスタ）
+  - [x] 費目マスタ（categoriesテーブル、`/categories` API、SC10画面）実装済み（2026-08-13）
+  - [x] 取引入力（transactionsテーブル、`/transactions` CRUD API）実装済み（2026-08-13）。SC03画面（フロント）は未着手
+  - [x] 収入・先取り貯金入力（incomes/pre_savingsテーブル、`/incomes`・`/pre-savings` の一覧取得＋一括更新API、SC05画面）実装済み（2026-08-13）。カテゴリのtype整合性チェック（income/pre_saving）・household分離を含む。SC05表示のため`users`テーブルに`display_name`・`household_id`を先行追加し、`GET /users`（household内一覧）も追加。フロントは`App.tsx`に簡易タブナビ（react-router未導入、暫定）で費目マスタ画面と切替表示
+  - [x] ダッシュボード（バックエンドのみ）：`GET /summary/monthly` API実装済み（2026-08-13）。`backend/src/services/summaryLogic.ts`に5.1按分（shared端数はcreatedBy側に+1円）・5.2週番号・5.3当月収支サマリ・5.4比率計算（ゼロ除算ガード）を純粋関数として実装し単体テスト済み（`tests/summaryLogic.test.ts`）。`summaryService.ts`でDB集計しAPI化、統合テストは`tests/summary.test.ts`。5.2週番号ロジックは実装済みだがまだどのAPIからも未使用（SC06週次予算はweekly_budgetsテーブル未作成のためフェーズ2で結線予定）。SC02画面（フロント）は未着手
 - [ ] フェーズ2: 予算・集計（週次予算/年間推移/収支可視化）
 - [ ] フェーズ3: 資産管理・Excel移行
 - [ ] フェーズ4: 変更履歴・エクスポート・仕上げ
+
+### 補足（2026-08-13時点）
+- 開発用MySQLコンテナ（`kakeibo-mysql`）に、現行設計と不整合な旧`categories`/`transactions`テーブル（`household_id`なし、ダミーデータ16件）が残存していたため削除済み。バックアップは開発者のスクラッチ領域に保存（リポジトリ外）。今後同様の旧データが必要な場合は要相談。
+- `kakeibo_user`にシャドウDB作成用の`CREATE, DROP, ALTER, REFERENCES, INDEX`グローバル権限を付与済み（`prisma migrate dev`に必要）。
+- `users`テーブルは認証機能未実装のため`households`と同様の最小限スタブだったが、2026-08-13にSC05表示用の`display_name`・`household_id`を追加済み（`email`/`password_hash`/`color_code`はJWT認証実装時に追加）。
+- 開発用DBのhousehold_id=1に、SC05動作確認用のダミーデータ（ユーザー2名「たいよう」「みらの」、収入費目「給与」、先取り貯金費目「積立NISA」）を投入済み。本番投入データではないため、認証実装時など必要に応じて削除・差し替えて問題ない。
