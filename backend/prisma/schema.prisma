@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// households本体は別機能のスコープ。categoriesのFK整合性のための最小限のスタブ。
+model Household {
+  id           BigInt        @id @default(autoincrement())
+  categories   Category[]
+  transactions Transaction[]
+  incomes      Income[]
+  preSavings   PreSaving[]
+  users        User[]
+
+  @@map("households")
+}
+
+// users本体（認証）は別機能のスコープ。displayNameはSC05（人別入力）表示のため先行追加。
+// email/password_hash等の認証関連カラムはJWT認証実装時に追加すること（docs/03_詳細設計書.md 1.2節）。
+model User {
+  id                    BigInt        @id @default(autoincrement())
+  householdId           BigInt        @map("household_id")
+  household             Household     @relation(fields: [householdId], references: [id])
+  displayName           String        @map("display_name") @db.VarChar(50)
+  transactionsAsUser    Transaction[] @relation("TransactionUser")
+  transactionsCreatedBy Transaction[] @relation("TransactionCreatedBy")
+  incomes               Income[]
+  preSavings            PreSaving[]
+
+  @@map("users")
+}
+
+enum CategoryType {
+  income
+  pre_saving
+  fixed_expense
+  variable_expense
+}
+
+model Category {
+  id           BigInt        @id @default(autoincrement())
+  householdId  BigInt        @map("household_id")
+  household    Household     @relation(fields: [householdId], references: [id])
+  type         CategoryType
+  name         String        @db.VarChar(50)
+  icon         String?       @db.VarChar(10)
+  sortOrder    Int           @default(0) @map("sort_order")
+  isActive     Boolean       @default(true) @map("is_active")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  transactions Transaction[]
+  incomes      Income[]
+  preSavings   PreSaving[]
+
+  @@unique([householdId, type, name])
+  @@map("categories")
+}
+
+enum SplitType {
+  self
+  shared
+}
+
+model Transaction {
+  id              BigInt      @id @default(autoincrement())
+  householdId     BigInt      @map("household_id")
+  household       Household   @relation(fields: [householdId], references: [id])
+  transactionDate DateTime    @map("transaction_date") @db.Date
+  categoryId      BigInt      @map("category_id")
+  category        Category    @relation(fields: [categoryId], references: [id])
+  splitType       SplitType   @map("split_type")
+  userId          BigInt?     @map("user_id")
+  user            User?       @relation("TransactionUser", fields: [userId], references: [id])
+  amount          Decimal     @db.Decimal(10, 0)
+  memo            String?     @db.VarChar(255)
+  createdBy       BigInt      @map("created_by")
+  createdByUser   User        @relation("TransactionCreatedBy", fields: [createdBy], references: [id])
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  @@index([householdId, transactionDate])
+  @@index([householdId, categoryId])
+  @@map("transactions")
+}
+
+model Income {
+  id          BigInt    @id @default(autoincrement())
+  householdId BigInt    @map("household_id")
+  household   Household @relation(fields: [householdId], references: [id])
+  year        Int       @db.SmallInt
+  month       Int       @db.TinyInt
+  userId      BigInt    @map("user_id")
+  user        User      @relation(fields: [userId], references: [id])
+  categoryId  BigInt    @map("category_id")
+  category    Category  @relation(fields: [categoryId], references: [id])
+  amount      Decimal   @default(0) @db.Decimal(10, 0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([householdId, year, month, userId, categoryId])
+  @@map("incomes")
+}
+
+model PreSaving {
+  id            BigInt    @id @default(autoincrement())
+  householdId   BigInt    @map("household_id")
+  household     Household @relation(fields: [householdId], references: [id])
+  year          Int       @db.SmallInt
+  month         Int       @db.TinyInt
+  userId        BigInt    @map("user_id")
+  user          User      @relation(fields: [userId], references: [id])
+  categoryId    BigInt    @map("category_id")
+  category      Category  @relation(fields: [categoryId], references: [id])
+  budgetAmount  Decimal   @default(0) @map("budget_amount") @db.Decimal(10, 0)
+  actualAmount  Decimal   @default(0) @map("actual_amount") @db.Decimal(10, 0)
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@unique([householdId, year, month, userId, categoryId])
+  @@map("pre_savings")
+}
