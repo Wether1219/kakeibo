@@ -9,7 +9,7 @@ datasource db {
 
 // households本体は別機能のスコープ。categoriesのFK整合性のための最小限のスタブ。
 model Household {
-  id            BigInt        @id @default(autoincrement())
+  id            BigInt         @id @default(autoincrement())
   categories    Category[]
   transactions  Transaction[]
   incomes       Income[]
@@ -17,6 +17,7 @@ model Household {
   weeklyBudgets WeeklyBudget[]
   users         User[]
   auditLogs     AuditLog[]
+  assets        Asset[]
 
   @@map("households")
 }
@@ -33,6 +34,7 @@ model User {
   incomes               Income[]
   preSavings            PreSaving[]
   auditLogs             AuditLog[]
+  assets                Asset[]
 
   @@map("users")
 }
@@ -45,18 +47,18 @@ enum CategoryType {
 }
 
 model Category {
-  id           BigInt        @id @default(autoincrement())
-  householdId  BigInt        @map("household_id")
-  household    Household     @relation(fields: [householdId], references: [id])
-  type         CategoryType
-  name         String        @db.VarChar(50)
-  icon         String?       @db.VarChar(10)
-  sortOrder    Int           @default(0) @map("sort_order")
-  isActive     Boolean       @default(true) @map("is_active")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  transactions Transaction[]
-  incomes      Income[]
-  preSavings   PreSaving[]
+  id            BigInt         @id @default(autoincrement())
+  householdId   BigInt         @map("household_id")
+  household     Household      @relation(fields: [householdId], references: [id])
+  type          CategoryType
+  name          String         @db.VarChar(50)
+  icon          String?        @db.VarChar(10)
+  sortOrder     Int            @default(0) @map("sort_order")
+  isActive      Boolean        @default(true) @map("is_active")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  transactions  Transaction[]
+  incomes       Income[]
+  preSavings    PreSaving[]
   weeklyBudgets WeeklyBudget[]
 
   @@unique([householdId, type, name])
@@ -69,21 +71,21 @@ enum SplitType {
 }
 
 model Transaction {
-  id              BigInt      @id @default(autoincrement())
-  householdId     BigInt      @map("household_id")
-  household       Household   @relation(fields: [householdId], references: [id])
-  transactionDate DateTime    @map("transaction_date") @db.Date
-  categoryId      BigInt      @map("category_id")
-  category        Category    @relation(fields: [categoryId], references: [id])
-  splitType       SplitType   @map("split_type")
-  userId          BigInt?     @map("user_id")
-  user            User?       @relation("TransactionUser", fields: [userId], references: [id])
-  amount          Decimal     @db.Decimal(10, 0)
-  memo            String?     @db.VarChar(255)
-  createdBy       BigInt      @map("created_by")
-  createdByUser   User        @relation("TransactionCreatedBy", fields: [createdBy], references: [id])
-  createdAt       DateTime    @default(now()) @map("created_at")
-  updatedAt       DateTime    @updatedAt @map("updated_at")
+  id              BigInt    @id @default(autoincrement())
+  householdId     BigInt    @map("household_id")
+  household       Household @relation(fields: [householdId], references: [id])
+  transactionDate DateTime  @map("transaction_date") @db.Date
+  categoryId      BigInt    @map("category_id")
+  category        Category  @relation(fields: [categoryId], references: [id])
+  splitType       SplitType @map("split_type")
+  userId          BigInt?   @map("user_id")
+  user            User?     @relation("TransactionUser", fields: [userId], references: [id])
+  amount          Decimal   @db.Decimal(10, 0)
+  memo            String?   @db.VarChar(255)
+  createdBy       BigInt    @map("created_by")
+  createdByUser   User      @relation("TransactionCreatedBy", fields: [createdBy], references: [id])
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   @@index([householdId, transactionDate])
   @@index([householdId, categoryId])
@@ -109,18 +111,18 @@ model Income {
 }
 
 model PreSaving {
-  id            BigInt    @id @default(autoincrement())
-  householdId   BigInt    @map("household_id")
-  household     Household @relation(fields: [householdId], references: [id])
-  year          Int       @db.SmallInt
-  month         Int       @db.TinyInt
-  userId        BigInt    @map("user_id")
-  user          User      @relation(fields: [userId], references: [id])
-  categoryId    BigInt    @map("category_id")
-  category      Category  @relation(fields: [categoryId], references: [id])
-  budgetAmount  Decimal   @default(0) @map("budget_amount") @db.Decimal(10, 0)
-  actualAmount  Decimal   @default(0) @map("actual_amount") @db.Decimal(10, 0)
-  createdAt     DateTime  @default(now()) @map("created_at")
+  id           BigInt    @id @default(autoincrement())
+  householdId  BigInt    @map("household_id")
+  household    Household @relation(fields: [householdId], references: [id])
+  year         Int       @db.SmallInt
+  month        Int       @db.TinyInt
+  userId       BigInt    @map("user_id")
+  user         User      @relation(fields: [userId], references: [id])
+  categoryId   BigInt    @map("category_id")
+  category     Category  @relation(fields: [categoryId], references: [id])
+  budgetAmount Decimal   @default(0) @map("budget_amount") @db.Decimal(10, 0)
+  actualAmount Decimal   @default(0) @map("actual_amount") @db.Decimal(10, 0)
+  createdAt    DateTime  @default(now()) @map("created_at")
 
   @@unique([householdId, year, month, userId, categoryId])
   @@map("pre_savings")
@@ -140,6 +142,44 @@ model WeeklyBudget {
 
   @@unique([householdId, year, month, weekNo, categoryId])
   @@map("weekly_budgets")
+}
+
+enum AssetGroup {
+  cash_deposit
+  securities
+  insurance
+}
+
+model Asset {
+  id                  BigInt         @id @default(autoincrement())
+  householdId         BigInt         @map("household_id")
+  household           Household      @relation(fields: [householdId], references: [id])
+  assetGroup          AssetGroup     @map("asset_group")
+  name                String         @db.VarChar(100)
+  detail              String?        @db.VarChar(100)
+  ownerUserId         BigInt         @map("owner_user_id")
+  ownerUser           User           @relation(fields: [ownerUserId], references: [id])
+  purpose             String?        @db.VarChar(100)
+  monthlyContribution Decimal?       @map("monthly_contribution") @db.Decimal(10, 0)
+  memo                String?        @db.VarChar(255)
+  sortOrder           Int            @default(0) @map("sort_order")
+  isActive            Boolean        @default(true) @map("is_active")
+  balances            AssetBalance[]
+
+  @@map("assets")
+}
+
+model AssetBalance {
+  id        BigInt   @id @default(autoincrement())
+  assetId   BigInt   @map("asset_id")
+  asset     Asset    @relation(fields: [assetId], references: [id])
+  year      Int      @db.SmallInt
+  month     Int      @db.TinyInt
+  balance   Decimal  @default(0) @db.Decimal(12, 0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([assetId, year, month])
+  @@map("asset_balances")
 }
 
 enum AuditAction {

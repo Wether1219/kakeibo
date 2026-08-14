@@ -8,6 +8,8 @@ import { summaryRouter } from './routes/summary';
 import { weeklyBudgetsRouter } from './routes/weeklyBudgets';
 import { auditLogsRouter } from './routes/auditLogs';
 import { exportRouter } from './routes/export';
+import { assetsRouter } from './routes/assets';
+import { assetBalancesRouter } from './routes/assetBalances';
 
 export function createApp() {
   const app = express();
@@ -21,5 +23,7 @@ export function createApp() {
   app.use('/api/v1/weekly-budgets', weeklyBudgetsRouter);
   app.use('/api/v1/audit-logs', auditLogsRouter);
   app.use('/api/v1/export', exportRouter);
+  app.use('/api/v1/assets', assetsRouter);
+  app.use('/api/v1/asset-balances', assetBalancesRouter);
   return app;
 }
