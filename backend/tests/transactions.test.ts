@@ -189,6 +189,62 @@ describe('/api/v1/transactions', () => {
     expect(res.status).toBe(400);
   });
 
+  it('keywordでメモ・費目名を部分一致検索でき、X-Total-Countで全件数が返る', async () => {
+    await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ memo: 'カフェでランチ' }));
+    await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ memo: 'コンビニ' }));
+
+    const memoRes = await request(app)
+      .get('/api/v1/transactions?keyword=カフェ')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+    expect(memoRes.status).toBe(200);
+    expect(memoRes.body).toHaveLength(1);
+    expect(memoRes.body[0].memo).toBe('カフェでランチ');
+    expect(memoRes.headers['x-total-count']).toBe('1');
+
+    const categoryNameRes = await request(app)
+      .get('/api/v1/transactions?keyword=食費')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+    expect(categoryNameRes.status).toBe(200);
+    expect(categoryNameRes.body).toHaveLength(2);
+    expect(categoryNameRes.headers['x-total-count']).toBe('2');
+  });
+
+  it('offsetでページネーションでき、X-Total-Countはoffset適用前の全件数を返す', async () => {
+    await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ transactionDate: `${currentYear}-05-01` }));
+    await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ transactionDate: `${currentYear}-05-10` }));
+    await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ transactionDate: `${currentYear}-05-20` }));
+
+    const res = await request(app)
+      .get(`/api/v1/transactions?sort=date_desc&limit=1&offset=1`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].transactionDate).toBe(`${currentYear}-05-10`);
+    expect(res.headers['x-total-count']).toBe('3');
+  });
+
+  it('不正なoffset（負の数）は400', async () => {
+    const res = await request(app)
+      .get('/api/v1/transactions?offset=-1')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+    expect(res.status).toBe(400);
+  });
+
   it('取引を更新できる', async () => {
     const createRes = await request(app)
       .post('/api/v1/transactions')
