@@ -13,7 +13,7 @@ import { useAnnualSummary } from '../hooks/useAnnualSummary';
 const MONTH_LABELS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 const SERIES_COLORS = ['#4C6EF5', '#F76707', '#12B886', '#E64980'];
 const TOTAL_OPTION = '__total__';
-const TOTAL_OPTION_TABS: SummaryTabType[] = ['fixed_expense', 'variable_expense', 'pre_saving'];
+const TOTAL_OPTION_TABS: SummaryTabType[] = ['income', 'fixed_expense', 'variable_expense', 'pre_saving'];
 
 function sumMonths(rowsList: { months: number[] }[]): number[] {
   const totals = new Array(12).fill(0);
