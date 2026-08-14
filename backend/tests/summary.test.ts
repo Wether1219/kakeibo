@@ -14,6 +14,7 @@ const EMPTY_MONTH = 6;
 
 let fixedCategoryId: bigint;
 let variableCategoryId: bigint;
+let incomeCategoryId: bigint;
 
 beforeAll(async () => {
   await prisma.transaction.deleteMany({ where: { householdId: TEST_HOUSEHOLD_ID } });
@@ -265,8 +266,6 @@ describe('GET /api/v1/summary/monthly', () => {
 });
 
 describe('GET /api/v1/summary/annual', () => {
-  let incomeCategoryId: bigint;
-
   beforeAll(async () => {
     const incomeCategory = await prisma.category.create({
       data: { householdId: TEST_HOUSEHOLD_ID, type: 'income', name: '給与', icon: '🔥' },
@@ -377,5 +376,278 @@ describe('GET /api/v1/summary/annual', () => {
     );
     expect(incomeRowB.months).toEqual(new Array(12).fill(0));
     expect(incomeRowB.annualTotal).toBe(0);
+  });
+});
+
+describe('GET /api/v1/summary/visualization', () => {
+  beforeEach(async () => {
+    await prisma.transaction.deleteMany({ where: { householdId: TEST_HOUSEHOLD_ID } });
+    await prisma.income.deleteMany({ where: { householdId: TEST_HOUSEHOLD_ID } });
+    await prisma.preSaving.deleteMany({ where: { householdId: TEST_HOUSEHOLD_ID } });
+  });
+
+  it('x-household-idヘッダーがない場合は401', async () => {
+    const res = await request(app).get(`/api/v1/summary/visualization?year=${currentYear}`);
+    expect(res.status).toBe(401);
+  });
+
+  it('yearがない場合は400', async () => {
+    const res = await request(app)
+      .get('/api/v1/summary/visualization')
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+    expect(res.status).toBe(400);
+  });
+
+  it('データがある月のみで月平均が算出され、年間合計・比率が正しく計算される', async () => {
+    // データがあるのは2ヶ月分（1月・2月）のみ
+    for (const month of [1, 2]) {
+      await prisma.income.create({
+        data: {
+          householdId: TEST_HOUSEHOLD_ID,
+          year: currentYear,
+          month,
+          userId: USER_A,
+          categoryId: incomeCategoryId,
+          amount: 100000,
+        },
+      });
+      await prisma.transaction.create({
+        data: {
+          householdId: TEST_HOUSEHOLD_ID,
+          transactionDate: new Date(Date.UTC(currentYear, month - 1, 10)),
+          categoryId: variableCategoryId,
+          splitType: 'self',
+          userId: USER_A,
+          amount: 40000,
+          createdBy: USER_A,
+        },
+      });
+    }
+
+    const res = await request(app)
+      .get(`/api/v1/summary/visualization?year=${currentYear}`)
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+    expect(res.status).toBe(200);
+    expect(res.body.year).toBe(currentYear);
+
+    const memberA = res.body.members.find((m: { userId: string }) => m.userId === USER_A.toString());
+    expect(memberA.annual).toMatchObject({
+      income: 200000,
+      preSaving: 0,
+      expense: 80000,
+      remainingSaving: 120000,
+      totalSaving: 120000,
+    });
+    // 月平均はデータのある2ヶ月分のみで割る（12ヶ月ではない）
+    expect(memberA.monthlyAverage).toMatchObject({
+      income: 100000,
+      preSaving: 0,
+      fixedExpense: 0,
+      variableExpense: 40000,
+      remainingSaving: 60000,
+      totalSaving: 60000,
+    });
+    expect(memberA.bonusAverage).toBe(0);
+    // 比率は年間ベース：expense 80000 / income 200000 = 40%、totalSaving 120000 / income 200000 = 60%
+    expect(memberA.expenseRatio).toBeCloseTo(40.0);
+    expect(memberA.savingRatio).toBeCloseTo(60.0);
+
+    const janRatio = memberA.monthlyRatios.find((r: { month: number }) => r.month === 1);
+    expect(janRatio.expenseRatio).toBeCloseTo(40.0);
+    expect(janRatio.savingRatio).toBeCloseTo(60.0);
+
+    // データのない月（3月）はゼロ除算ガードで0
+    const marchRatio = memberA.monthlyRatios.find((r: { month: number }) => r.month === 3);
+    expect(marchRatio).toMatchObject({ expenseRatio: 0, savingRatio: 0 });
+
+    const memberB = res.body.members.find((m: { userId: string }) => m.userId === USER_B.toString());
+    expect(memberB.annual).toMatchObject({
+      income: 0,
+      preSaving: 0,
+      expense: 0,
+      remainingSaving: 0,
+      totalSaving: 0,
+    });
+    expect(memberB.monthlyAverage).toMatchObject({
+      income: 0,
+      preSaving: 0,
+      fixedExpense: 0,
+      variableExpense: 0,
+      remainingSaving: 0,
+      totalSaving: 0,
+    });
+    expect(memberB.bonusAverage).toBe(0);
+    expect(memberB.expenseRatio).toBe(0);
+    expect(memberB.savingRatio).toBe(0);
+  });
+
+  it('賞与費目（💰賞与）の収入は月平均から除外され、年間合計÷2がbonusAverageとして返る', async () => {
+    const bonusCategory = await prisma.category.create({
+      data: { householdId: TEST_HOUSEHOLD_ID, type: 'income', name: '賞与', icon: '💰' },
+    });
+    try {
+      // 通常収入（1月・2月）
+      for (const month of [1, 2]) {
+        await prisma.income.create({
+          data: {
+            householdId: TEST_HOUSEHOLD_ID,
+            year: currentYear,
+            month,
+            userId: USER_A,
+            categoryId: incomeCategoryId,
+            amount: 100000,
+          },
+        });
+      }
+      // 賞与（6月・12月）
+      for (const month of [6, 12]) {
+        await prisma.income.create({
+          data: {
+            householdId: TEST_HOUSEHOLD_ID,
+            year: currentYear,
+            month,
+            userId: USER_A,
+            categoryId: bonusCategory.id,
+            amount: 300000,
+          },
+        });
+      }
+
+      const res = await request(app)
+        .get(`/api/v1/summary/visualization?year=${currentYear}`)
+        .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      expect(res.status).toBe(200);
+
+      const memberA = res.body.members.find((m: { userId: string }) => m.userId === USER_A.toString());
+      // 月平均の収入は賞与を除いた1月・2月（各100000円）のみで算出：2ヶ月分の平均
+      expect(memberA.monthlyAverage.income).toBe(100000);
+      // 賞与は年間合計600000円 ÷ 2 = 300000円
+      expect(memberA.bonusAverage).toBe(300000);
+      // 年間合計（annual）は賞与も含めた全収入
+      expect(memberA.annual.income).toBe(800000);
+    } finally {
+      await prisma.income.deleteMany({ where: { categoryId: bonusCategory.id } });
+      await prisma.category.delete({ where: { id: bonusCategory.id } });
+    }
+  });
+
+  it('月平均が費目ごとの内訳（incomeByCategory等）として返る', async () => {
+    const preSavingCategory = await prisma.category.create({
+      data: { householdId: TEST_HOUSEHOLD_ID, type: 'pre_saving', name: '積立NISA', icon: '📈' },
+    });
+    try {
+      // データがあるのは1月・2月の2ヶ月分のみ
+      for (const month of [1, 2]) {
+        await prisma.income.create({
+          data: {
+            householdId: TEST_HOUSEHOLD_ID,
+            year: currentYear,
+            month,
+            userId: USER_A,
+            categoryId: incomeCategoryId,
+            amount: 100000,
+          },
+        });
+        await prisma.preSaving.create({
+          data: {
+            householdId: TEST_HOUSEHOLD_ID,
+            year: currentYear,
+            month,
+            userId: USER_A,
+            categoryId: preSavingCategory.id,
+            actualAmount: 10000,
+          },
+        });
+        await prisma.transaction.create({
+          data: {
+            householdId: TEST_HOUSEHOLD_ID,
+            transactionDate: new Date(Date.UTC(currentYear, month - 1, 10)),
+            categoryId: fixedCategoryId,
+            splitType: 'self',
+            userId: USER_A,
+            amount: 8000,
+            createdBy: USER_A,
+          },
+        });
+        await prisma.transaction.create({
+          data: {
+            householdId: TEST_HOUSEHOLD_ID,
+            transactionDate: new Date(Date.UTC(currentYear, month - 1, 15)),
+            categoryId: variableCategoryId,
+            splitType: 'self',
+            userId: USER_A,
+            amount: 40000,
+            createdBy: USER_A,
+          },
+        });
+      }
+
+      const res = await request(app)
+        .get(`/api/v1/summary/visualization?year=${currentYear}`)
+        .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      expect(res.status).toBe(200);
+
+      const memberA = res.body.members.find((m: { userId: string }) => m.userId === USER_A.toString());
+      expect(memberA.monthlyAverage.incomeByCategory).toContainEqual({
+        categoryId: incomeCategoryId.toString(),
+        icon: '🔥',
+        name: '給与',
+        amount: 100000,
+      });
+      expect(memberA.monthlyAverage.preSavingByCategory).toContainEqual({
+        categoryId: preSavingCategory.id.toString(),
+        icon: '📈',
+        name: '積立NISA',
+        amount: 10000,
+      });
+      expect(memberA.monthlyAverage.fixedExpenseByCategory).toContainEqual({
+        categoryId: fixedCategoryId.toString(),
+        icon: '🔥',
+        name: '光熱費',
+        amount: 8000,
+      });
+      expect(memberA.monthlyAverage.variableExpenseByCategory).toContainEqual({
+        categoryId: variableCategoryId.toString(),
+        icon: '🍙',
+        name: '食費',
+        amount: 40000,
+      });
+    } finally {
+      await prisma.preSaving.deleteMany({ where: { categoryId: preSavingCategory.id } });
+      await prisma.category.delete({ where: { id: preSavingCategory.id } });
+    }
+  });
+
+  it('対象年にデータが0件の場合、年間合計・月平均・比率はすべて0になる（分母0ガード）', async () => {
+    const res = await request(app)
+      .get(`/api/v1/summary/visualization?year=${currentYear}`)
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+    expect(res.status).toBe(200);
+
+    for (const member of res.body.members) {
+      expect(member.annual).toMatchObject({
+        income: 0,
+        preSaving: 0,
+        expense: 0,
+        remainingSaving: 0,
+        totalSaving: 0,
+      });
+      expect(member.monthlyAverage).toMatchObject({
+        income: 0,
+        preSaving: 0,
+        fixedExpense: 0,
+        variableExpense: 0,
+        remainingSaving: 0,
+        totalSaving: 0,
+      });
+      expect(member.bonusAverage).toBe(0);
+      expect(member.expenseRatio).toBe(0);
+      expect(member.savingRatio).toBe(0);
+      expect(member.monthlyRatios).toHaveLength(12);
+      for (const ratio of member.monthlyRatios) {
+        expect(ratio.expenseRatio).toBe(0);
+        expect(ratio.savingRatio).toBe(0);
+      }
+    }
   });
 });
