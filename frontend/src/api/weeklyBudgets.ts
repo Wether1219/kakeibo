@@ -1,3 +1,5 @@
+import { ensureCurrentUserId } from './users';
+
 const API_BASE = '/api/v1';
 
 // 認証実装までの暫定措置。フェーズ0でJWTベースのAPIクライアントに置き換える。
@@ -23,14 +25,14 @@ export interface WeeklyBudgetBulkItem {
   budgetAmount: number;
 }
 
-function headers() {
+function headers(userId?: string) {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'x-household-id': TEMP_HOUSEHOLD_ID,
   };
-  const userId = localStorage.getItem(CURRENT_USER_KEY);
-  if (userId) {
-    headers['x-user-id'] = userId;
+  const resolvedUserId = userId ?? localStorage.getItem(CURRENT_USER_KEY);
+  if (resolvedUserId) {
+    headers['x-user-id'] = resolvedUserId;
   }
   return headers;
 }
@@ -47,9 +49,10 @@ export async function fetchWeeklyBudgets(
 }
 
 export async function bulkUpdateWeeklyBudgets(items: WeeklyBudgetBulkItem[]): Promise<unknown> {
+  const userId = await ensureCurrentUserId();
   const res = await fetch(`${API_BASE}/weekly-budgets/bulk`, {
     method: 'PUT',
-    headers: headers(),
+    headers: headers(userId),
     body: JSON.stringify(items),
   });
   if (!res.ok) throw new Error('週次予算の保存に失敗しました');
