@@ -1,14 +1,17 @@
 import { AssetGroup } from '../api/assets';
 
+export type AssetGroupTabValue = AssetGroup | 'net_worth';
+
 interface Props {
-  value: AssetGroup;
-  onChange: (group: AssetGroup) => void;
+  value: AssetGroupTabValue;
+  onChange: (group: AssetGroupTabValue) => void;
 }
 
-const TABS: { group: AssetGroup; label: string }[] = [
+const TABS: { group: AssetGroupTabValue; label: string }[] = [
   { group: 'cash_deposit', label: '現金・預貯金' },
   { group: 'securities', label: '証券・株式' },
   { group: 'insurance', label: '保険' },
+  { group: 'net_worth', label: '純資産' },
 ];
 
 export function AssetGroupTab({ value, onChange }: Props) {
