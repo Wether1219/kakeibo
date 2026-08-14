@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { prisma } from '../src/prisma';
+import { authHeader } from './helpers/auth';
 
 const TEST_HOUSEHOLD_ID = 999997n;
 const OTHER_HOUSEHOLD_ID = 999996n;
@@ -27,8 +28,8 @@ beforeAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: [USER_ID, OTHER_USER_ID] } } });
   await prisma.user.createMany({
     data: [
-      { id: USER_ID, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう' },
-      { id: OTHER_USER_ID, householdId: OTHER_HOUSEHOLD_ID, displayName: 'みらの' },
+      { id: USER_ID, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう', email: `user${USER_ID}@test.local`, passwordHash: 'test-hash' },
+      { id: OTHER_USER_ID, householdId: OTHER_HOUSEHOLD_ID, displayName: 'みらの', email: `user${OTHER_USER_ID}@test.local`, passwordHash: 'test-hash' },
     ],
   });
   const category = await prisma.category.create({
@@ -66,24 +67,20 @@ function baseBody(overrides: Record<string, unknown> = {}) {
 }
 
 describe('/api/v1/transactions', () => {
-  it('x-household-idヘッダーがない場合は401', async () => {
+  it('Authorizationヘッダーがない場合は401', async () => {
     const res = await request(app).get('/api/v1/transactions');
     expect(res.status).toBe(401);
   });
 
-  it('x-user-idヘッダーがない場合、登録は401', async () => {
-    const res = await request(app)
-      .post('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .send(baseBody());
+  it('Authorizationヘッダーがない場合、登録は401', async () => {
+    const res = await request(app).post('/api/v1/transactions').send(baseBody());
     expect(res.status).toBe(401);
   });
 
   it('取引を登録して一覧取得できる', async () => {
     const createRes = await request(app)
       .post('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody());
     expect(createRes.status).toBe(201);
     expect(createRes.body).toMatchObject({
@@ -97,7 +94,7 @@ describe('/api/v1/transactions', () => {
 
     const listRes = await request(app)
       .get('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(listRes.status).toBe(200);
     expect(listRes.body).toHaveLength(1);
     expect(listRes.body[0].amount).toBe(1000);
@@ -106,8 +103,7 @@ describe('/api/v1/transactions', () => {
   it('splitType=sharedの場合、userIdはNULLになる', async () => {
     const createRes = await request(app)
       .post('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody({ splitType: 'shared', userId: USER_ID.toString() }));
     expect(createRes.status).toBe(201);
     expect(createRes.body.splitType).toBe('shared');
@@ -117,8 +113,7 @@ describe('/api/v1/transactions', () => {
   it('splitType=selfでuserId未指定は400', async () => {
     const res = await request(app)
       .post('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody({ splitType: 'self', userId: undefined }));
     expect(res.status).toBe(400);
   });
@@ -126,8 +121,7 @@ describe('/api/v1/transactions', () => {
   it('金額が0以下は400', async () => {
     const res = await request(app)
       .post('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody({ amount: 0 }));
     expect(res.status).toBe(400);
   });
@@ -135,8 +129,7 @@ describe('/api/v1/transactions', () => {
   it('当年内でない日付は400', async () => {
     const res = await request(app)
       .post('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody({ transactionDate: `${currentYear - 1}-05-10` }));
     expect(res.status).toBe(400);
   });
@@ -144,18 +137,16 @@ describe('/api/v1/transactions', () => {
   it('year・monthで絞り込める', async () => {
     await request(app)
       .post('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody({ transactionDate: `${currentYear}-05-10` }));
     await request(app)
       .post('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody({ transactionDate: `${currentYear}-06-10` }));
 
     const res = await request(app)
       .get(`/api/v1/transactions?year=${currentYear}&month=5`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].transactionDate).toBe(`${currentYear}-05-10`);
@@ -164,23 +155,20 @@ describe('/api/v1/transactions', () => {
   it('limit・sort=date_descで件数制限と日付降順が反映される', async () => {
     await request(app)
       .post('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody({ transactionDate: `${currentYear}-05-01` }));
     await request(app)
       .post('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody({ transactionDate: `${currentYear}-05-20` }));
     await request(app)
       .post('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody({ transactionDate: `${currentYear}-05-10` }));
 
     const res = await request(app)
       .get(`/api/v1/transactions?year=${currentYear}&month=5&limit=2&sort=date_desc`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(2);
     expect(res.body[0].transactionDate).toBe(`${currentYear}-05-20`);
@@ -190,29 +178,27 @@ describe('/api/v1/transactions', () => {
   it('不正なsortは400', async () => {
     const res = await request(app)
       .get('/api/v1/transactions?sort=amount_asc')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(res.status).toBe(400);
   });
 
   it('不正なlimit（0以下）は400', async () => {
     const res = await request(app)
       .get('/api/v1/transactions?limit=0')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(res.status).toBe(400);
   });
 
   it('取引を更新できる', async () => {
     const createRes = await request(app)
       .post('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody());
     const id = createRes.body.id;
 
     const updateRes = await request(app)
       .put(`/api/v1/transactions/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody({ amount: 2000, memo: '更新後' }));
     expect(updateRes.status).toBe(200);
     expect(updateRes.body).toMatchObject({ amount: 2000, memo: '更新後' });
@@ -224,22 +210,19 @@ describe('/api/v1/transactions', () => {
     });
     const createRes = await request(app)
       .post('/api/v1/transactions')
-      .set('x-household-id', OTHER_HOUSEHOLD_ID.toString())
-      .set('x-user-id', OTHER_USER_ID.toString())
+      .set('Authorization', authHeader(OTHER_HOUSEHOLD_ID, OTHER_USER_ID))
       .send(baseBody({ categoryId: otherCategory.id.toString() }));
     const id = createRes.body.id;
 
     const updateRes = await request(app)
       .put(`/api/v1/transactions/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody());
     expect(updateRes.status).toBe(404);
 
     const deleteRes = await request(app)
       .delete(`/api/v1/transactions/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(deleteRes.status).toBe(404);
 
     await prisma.transaction.deleteMany({ where: { householdId: OTHER_HOUSEHOLD_ID } });
@@ -249,20 +232,18 @@ describe('/api/v1/transactions', () => {
   it('取引を削除できる', async () => {
     const createRes = await request(app)
       .post('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody());
     const id = createRes.body.id;
 
     const deleteRes = await request(app)
       .delete(`/api/v1/transactions/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(deleteRes.status).toBe(204);
 
     const listRes = await request(app)
       .get('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(listRes.body).toHaveLength(0);
   });
 });

@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { prisma } from '../src/prisma';
+import { authHeader } from './helpers/auth';
 
 const TEST_HOUSEHOLD_ID = 999959n;
 const OTHER_HOUSEHOLD_ID = 999958n;
@@ -25,9 +26,9 @@ beforeAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: [USER_A, USER_B, OTHER_USER] } } });
   await prisma.user.createMany({
     data: [
-      { id: USER_A, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう' },
-      { id: USER_B, householdId: TEST_HOUSEHOLD_ID, displayName: 'みらの' },
-      { id: OTHER_USER, householdId: OTHER_HOUSEHOLD_ID, displayName: '他世帯ユーザー' },
+      { id: USER_A, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう', email: `user${USER_A}@test.local`, passwordHash: 'test-hash' },
+      { id: USER_B, householdId: TEST_HOUSEHOLD_ID, displayName: 'みらの', email: `user${USER_B}@test.local`, passwordHash: 'test-hash' },
+      { id: OTHER_USER, householdId: OTHER_HOUSEHOLD_ID, displayName: '他世帯ユーザー', email: `user${OTHER_USER}@test.local`, passwordHash: 'test-hash' },
     ],
   });
 });
@@ -55,7 +56,7 @@ afterAll(async () => {
 });
 
 describe('/api/v1/assets', () => {
-  it('x-household-idヘッダーがない場合は401', async () => {
+  it('Authorizationヘッダーがない場合は401', async () => {
     const res = await request(app).get('/api/v1/assets');
     expect(res.status).toBe(401);
   });
@@ -63,8 +64,7 @@ describe('/api/v1/assets', () => {
   it('口座を作成し一覧取得できる', async () => {
     const createRes = await request(app)
       .post('/api/v1/assets')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send({
         assetGroup: 'cash_deposit',
         name: '三井住友銀行',
@@ -82,7 +82,7 @@ describe('/api/v1/assets', () => {
 
     const listRes = await request(app)
       .get('/api/v1/assets')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(listRes.status).toBe(200);
     expect(listRes.body).toHaveLength(1);
   });
@@ -90,18 +90,16 @@ describe('/api/v1/assets', () => {
   it('assetGroupで絞り込める', async () => {
     await request(app)
       .post('/api/v1/assets')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send({ assetGroup: 'cash_deposit', name: '銀行A', ownerUserId: USER_A.toString() });
     await request(app)
       .post('/api/v1/assets')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send({ assetGroup: 'securities', name: '証券A', ownerUserId: USER_A.toString() });
 
     const res = await request(app)
       .get('/api/v1/assets?assetGroup=securities')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].name).toBe('証券A');
@@ -110,8 +108,7 @@ describe('/api/v1/assets', () => {
   it('存在しないownerUserIdの場合は400', async () => {
     const res = await request(app)
       .post('/api/v1/assets')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send({ assetGroup: 'cash_deposit', name: '銀行A', ownerUserId: '9999999' });
     expect(res.status).toBe(400);
   });
@@ -119,14 +116,12 @@ describe('/api/v1/assets', () => {
   it('口座を編集できる', async () => {
     const createRes = await request(app)
       .post('/api/v1/assets')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send({ assetGroup: 'cash_deposit', name: '銀行A', ownerUserId: USER_A.toString() });
 
     const updateRes = await request(app)
       .put(`/api/v1/assets/${createRes.body.id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send({ name: '銀行A（改称）', ownerUserId: USER_B.toString() });
     expect(updateRes.status).toBe(200);
     expect(updateRes.body).toMatchObject({
@@ -138,8 +133,7 @@ describe('/api/v1/assets', () => {
   it('存在しないidの編集は404', async () => {
     const res = await request(app)
       .put('/api/v1/assets/9999999')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send({ name: '銀行B' });
     expect(res.status).toBe(404);
   });
@@ -147,13 +141,12 @@ describe('/api/v1/assets', () => {
   it('他世帯の口座は一覧に表示されない', async () => {
     await request(app)
       .post('/api/v1/assets')
-      .set('x-household-id', OTHER_HOUSEHOLD_ID.toString())
-      .set('x-user-id', OTHER_USER.toString())
+      .set('Authorization', authHeader(OTHER_HOUSEHOLD_ID, OTHER_USER))
       .send({ assetGroup: 'cash_deposit', name: '他世帯銀行', ownerUserId: OTHER_USER.toString() });
 
     const res = await request(app)
       .get('/api/v1/assets')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(0);
   });

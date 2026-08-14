@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { prisma } from '../src/prisma';
+import { authHeader } from './helpers/auth';
 
 const TEST_HOUSEHOLD_ID = 999969n;
 const OTHER_HOUSEHOLD_ID = 999968n;
@@ -35,8 +36,8 @@ beforeAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: [USER_A, USER_B] } } });
   await prisma.user.createMany({
     data: [
-      { id: USER_A, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう' },
-      { id: USER_B, householdId: TEST_HOUSEHOLD_ID, displayName: 'みらの' },
+      { id: USER_A, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう', email: `user${USER_A}@test.local`, passwordHash: 'test-hash' },
+      { id: USER_B, householdId: TEST_HOUSEHOLD_ID, displayName: 'みらの', email: `user${USER_B}@test.local`, passwordHash: 'test-hash' },
     ],
   });
   const variableCategory = await prisma.category.create({
@@ -82,7 +83,7 @@ function baseItem(overrides: Record<string, unknown> = {}) {
 }
 
 describe('/api/v1/weekly-budgets', () => {
-  it('x-household-idヘッダーがない場合は401', async () => {
+  it('Authorizationヘッダーがない場合は401', async () => {
     const res = await request(app).get(`/api/v1/weekly-budgets?year=${YEAR}&month=${MONTH}`);
     expect(res.status).toBe(401);
   });
@@ -90,15 +91,14 @@ describe('/api/v1/weekly-budgets', () => {
   it('year・monthがない場合は400', async () => {
     const res = await request(app)
       .get('/api/v1/weekly-budgets')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(400);
   });
 
   it('一括登録して一覧取得できる（更新も新規作成にならない）', async () => {
     const putRes = await request(app)
       .put('/api/v1/weekly-budgets/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send([baseItem(), baseItem({ weekNo: 2, budgetAmount: 3000 })]);
     expect(putRes.status).toBe(200);
     expect(putRes.body).toHaveLength(2);
@@ -112,15 +112,14 @@ describe('/api/v1/weekly-budgets', () => {
 
     const updateRes = await request(app)
       .put('/api/v1/weekly-budgets/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send([baseItem({ budgetAmount: 6000 })]);
     expect(updateRes.body).toHaveLength(1);
     expect(updateRes.body[0].budgetAmount).toBe(6000);
 
     const listRes = await request(app)
       .get(`/api/v1/weekly-budgets?year=${YEAR}&month=${MONTH}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(listRes.status).toBe(200);
     const week1 = listRes.body.find((r: { weekNo: number }) => r.weekNo === 1);
     expect(week1.budgetAmount).toBe(6000);
@@ -129,8 +128,7 @@ describe('/api/v1/weekly-budgets', () => {
   it('type=variable_expense以外の費目は400', async () => {
     const res = await request(app)
       .put('/api/v1/weekly-budgets/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send([baseItem({ categoryId: incomeCategoryId })]);
     expect(res.status).toBe(400);
   });
@@ -138,15 +136,13 @@ describe('/api/v1/weekly-budgets', () => {
   it('weekNoが範囲外（0または7）は400', async () => {
     const resZero = await request(app)
       .put('/api/v1/weekly-budgets/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send([baseItem({ weekNo: 0 })]);
     expect(resZero.status).toBe(400);
 
     const resSeven = await request(app)
       .put('/api/v1/weekly-budgets/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send([baseItem({ weekNo: 7 })]);
     expect(resSeven.status).toBe(400);
   });
@@ -157,13 +153,12 @@ describe('/api/v1/weekly-budgets', () => {
     });
     await request(app)
       .put('/api/v1/weekly-budgets/bulk')
-      .set('x-household-id', OTHER_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(OTHER_HOUSEHOLD_ID, USER_A))
       .send([baseItem({ categoryId: otherCategory.id.toString() })]);
 
     const listRes = await request(app)
       .get(`/api/v1/weekly-budgets?year=${YEAR}&month=${MONTH}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(listRes.status).toBe(200);
     expect(listRes.body.every((r: { budgetAmount: number }) => r.budgetAmount === 0)).toBe(true);
 
@@ -174,8 +169,7 @@ describe('/api/v1/weekly-budgets', () => {
   it('実績は既存の按分ロジック（5.1）で世帯合計として集計され、月末を含む週まで（第6週まで）表示される', async () => {
     await request(app)
       .put('/api/v1/weekly-budgets/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send([
         baseItem({ weekNo: 1, budgetAmount: 1000 }),
         baseItem({ weekNo: 2, budgetAmount: 800 }),
@@ -220,7 +214,7 @@ describe('/api/v1/weekly-budgets', () => {
 
     const res = await request(app)
       .get(`/api/v1/weekly-budgets?year=${YEAR}&month=${MONTH}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
 
     const byWeek = (weekNo: number) =>

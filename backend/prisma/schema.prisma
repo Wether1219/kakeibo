@@ -22,13 +22,15 @@ model Household {
   @@map("households")
 }
 
-// users本体（認証）は別機能のスコープ。displayNameはSC05（人別入力）表示のため先行追加。
-// email/password_hash等の認証関連カラムはJWT認証実装時に追加すること（docs/03_詳細設計書.md 1.2節）。
+// users本体（認証）。email/password_hash/color_codeはJWT認証実装時に追加（docs/03_詳細設計書.md 1.2節）。
 model User {
   id                    BigInt        @id @default(autoincrement())
   householdId           BigInt        @map("household_id")
   household             Household     @relation(fields: [householdId], references: [id])
+  email                 String        @unique @db.VarChar(255)
+  passwordHash          String        @map("password_hash") @db.VarChar(255)
   displayName           String        @map("display_name") @db.VarChar(50)
+  colorCode             String?       @map("color_code") @db.VarChar(7)
   transactionsAsUser    Transaction[] @relation("TransactionUser")
   transactionsCreatedBy Transaction[] @relation("TransactionCreatedBy")
   incomes               Income[]

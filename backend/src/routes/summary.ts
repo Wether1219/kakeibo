@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { HouseholdRequest, householdMiddleware } from '../middlewares/household';
+import { HouseholdRequest, authMiddleware } from '../middlewares/household';
 import {
   SummaryValidationError,
   getAnnualSummary,
@@ -8,7 +8,7 @@ import {
 } from '../services/summaryService';
 
 export const summaryRouter = Router();
-summaryRouter.use(householdMiddleware);
+summaryRouter.use(authMiddleware);
 
 summaryRouter.get('/monthly', async (req: HouseholdRequest, res) => {
   const { year, month } = req.query;

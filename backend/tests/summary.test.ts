@@ -2,10 +2,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { prisma } from '../src/prisma';
+import { authHeader } from './helpers/auth';
 
-const TEST_HOUSEHOLD_ID = 999979n;
-const USER_A = 999978n; // たいよう
-const USER_B = 999977n; // みらの
+const TEST_HOUSEHOLD_ID = 999929n;
+const USER_A = 999928n; // たいよう
+const USER_B = 999927n; // みらの
 const app = createApp();
 
 const currentYear = new Date().getFullYear();
@@ -26,8 +27,8 @@ beforeAll(async () => {
   await prisma.household.create({ data: { id: TEST_HOUSEHOLD_ID } });
   await prisma.user.createMany({
     data: [
-      { id: USER_A, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう' },
-      { id: USER_B, householdId: TEST_HOUSEHOLD_ID, displayName: 'みらの' },
+      { id: USER_A, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう', email: `user${USER_A}@test.local`, passwordHash: 'test-hash' },
+      { id: USER_B, householdId: TEST_HOUSEHOLD_ID, displayName: 'みらの', email: `user${USER_B}@test.local`, passwordHash: 'test-hash' },
     ],
   });
   const fixedCategory = await prisma.category.create({
@@ -113,7 +114,7 @@ afterAll(async () => {
 });
 
 describe('GET /api/v1/summary/monthly', () => {
-  it('x-household-idヘッダーがない場合は401', async () => {
+  it('Authorizationヘッダーがない場合は401', async () => {
     const res = await request(app).get(
       `/api/v1/summary/monthly?year=${currentYear}&month=${TARGET_MONTH}`
     );
@@ -123,7 +124,7 @@ describe('GET /api/v1/summary/monthly', () => {
   it('year・monthがない場合は400', async () => {
     const res = await request(app)
       .get('/api/v1/summary/monthly')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(400);
   });
 
@@ -167,7 +168,7 @@ describe('GET /api/v1/summary/monthly', () => {
 
     const res = await request(app)
       .get(`/api/v1/summary/monthly?year=${currentYear}&month=${TARGET_MONTH}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
     expect(res.body.year).toBe(currentYear);
     expect(res.body.month).toBe(TARGET_MONTH);
@@ -217,7 +218,7 @@ describe('GET /api/v1/summary/monthly', () => {
   it('対象月にデータが0件の場合、収支は全て0で費目別内訳は0円のカテゴリのみ返る', async () => {
     const res = await request(app)
       .get(`/api/v1/summary/monthly?year=${currentYear}&month=${EMPTY_MONTH}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
     for (const member of res.body.members) {
       expect(member.income).toBe(0);
@@ -251,7 +252,7 @@ describe('GET /api/v1/summary/monthly', () => {
 
     const res = await request(app)
       .get(`/api/v1/summary/monthly?year=${currentYear}&month=${TARGET_MONTH}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
 
     const memberA = res.body.members.find((m: { userId: string }) => m.userId === USER_A.toString());
@@ -279,7 +280,7 @@ describe('GET /api/v1/summary/annual', () => {
     await prisma.preSaving.deleteMany({ where: { householdId: TEST_HOUSEHOLD_ID } });
   });
 
-  it('x-household-idヘッダーがない場合は401', async () => {
+  it('Authorizationヘッダーがない場合は401', async () => {
     const res = await request(app).get(`/api/v1/summary/annual?year=${currentYear}`);
     expect(res.status).toBe(401);
   });
@@ -287,7 +288,7 @@ describe('GET /api/v1/summary/annual', () => {
   it('yearがない場合は400', async () => {
     const res = await request(app)
       .get('/api/v1/summary/annual')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(400);
   });
 
@@ -318,7 +319,7 @@ describe('GET /api/v1/summary/annual', () => {
 
     const res = await request(app)
       .get(`/api/v1/summary/annual?year=${currentYear}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
     expect(res.body.year).toBe(currentYear);
 
@@ -358,7 +359,7 @@ describe('GET /api/v1/summary/annual', () => {
 
     const res = await request(app)
       .get(`/api/v1/summary/annual?year=${currentYear}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
 
     const incomeRowA = res.body.rows.find(
@@ -386,7 +387,7 @@ describe('GET /api/v1/summary/visualization', () => {
     await prisma.preSaving.deleteMany({ where: { householdId: TEST_HOUSEHOLD_ID } });
   });
 
-  it('x-household-idヘッダーがない場合は401', async () => {
+  it('Authorizationヘッダーがない場合は401', async () => {
     const res = await request(app).get(`/api/v1/summary/visualization?year=${currentYear}`);
     expect(res.status).toBe(401);
   });
@@ -394,7 +395,7 @@ describe('GET /api/v1/summary/visualization', () => {
   it('yearがない場合は400', async () => {
     const res = await request(app)
       .get('/api/v1/summary/visualization')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(400);
   });
 
@@ -426,7 +427,7 @@ describe('GET /api/v1/summary/visualization', () => {
 
     const res = await request(app)
       .get(`/api/v1/summary/visualization?year=${currentYear}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
     expect(res.body.year).toBe(currentYear);
 
@@ -515,7 +516,7 @@ describe('GET /api/v1/summary/visualization', () => {
 
       const res = await request(app)
         .get(`/api/v1/summary/visualization?year=${currentYear}`)
-        .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+        .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
       expect(res.status).toBe(200);
 
       const memberA = res.body.members.find((m: { userId: string }) => m.userId === USER_A.toString());
@@ -584,7 +585,7 @@ describe('GET /api/v1/summary/visualization', () => {
 
       const res = await request(app)
         .get(`/api/v1/summary/visualization?year=${currentYear}`)
-        .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+        .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
       expect(res.status).toBe(200);
 
       const memberA = res.body.members.find((m: { userId: string }) => m.userId === USER_A.toString());
@@ -621,7 +622,7 @@ describe('GET /api/v1/summary/visualization', () => {
   it('対象年にデータが0件の場合、年間合計・月平均・比率はすべて0になる（分母0ガード）', async () => {
     const res = await request(app)
       .get(`/api/v1/summary/visualization?year=${currentYear}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
 
     for (const member of res.body.members) {

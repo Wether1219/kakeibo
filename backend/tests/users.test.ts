@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { prisma } from '../src/prisma';
+import { authHeader } from './helpers/auth';
 
 const TEST_HOUSEHOLD_ID = 999985n;
 const OTHER_HOUSEHOLD_ID = 999984n;
@@ -20,8 +21,8 @@ beforeAll(async () => {
   await resetHousehold(OTHER_HOUSEHOLD_ID);
   await prisma.user.createMany({
     data: [
-      { id: USER_ID, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう' },
-      { id: OTHER_USER_ID, householdId: OTHER_HOUSEHOLD_ID, displayName: 'みらの' },
+      { id: USER_ID, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう', email: `user${USER_ID}@test.local`, passwordHash: 'test-hash' },
+      { id: OTHER_USER_ID, householdId: OTHER_HOUSEHOLD_ID, displayName: 'みらの', email: `user${OTHER_USER_ID}@test.local`, passwordHash: 'test-hash' },
     ],
   });
 });
@@ -33,7 +34,7 @@ afterAll(async () => {
 });
 
 describe('/api/v1/users', () => {
-  it('x-household-idヘッダーがない場合は401', async () => {
+  it('Authorizationヘッダーがない場合は401', async () => {
     const res = await request(app).get('/api/v1/users');
     expect(res.status).toBe(401);
   });
@@ -41,7 +42,7 @@ describe('/api/v1/users', () => {
   it('自世帯のユーザーのみ一覧取得できる', async () => {
     const res = await request(app)
       .get('/api/v1/users')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0]).toMatchObject({ id: USER_ID.toString(), displayName: 'たいよう' });

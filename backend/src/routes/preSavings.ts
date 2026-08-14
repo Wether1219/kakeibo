@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { HouseholdRequest, householdMiddleware, userMiddleware } from '../middlewares/household';
+import { HouseholdRequest, authMiddleware } from '../middlewares/household';
 import {
   PreSavingInput,
   PreSavingValidationError,
@@ -62,7 +62,7 @@ function parsePreSavingItem(item: unknown): PreSavingInput | null {
 }
 
 export const preSavingsRouter = Router();
-preSavingsRouter.use(householdMiddleware);
+preSavingsRouter.use(authMiddleware);
 
 preSavingsRouter.get('/', async (req: HouseholdRequest, res) => {
   const { year, month } = req.query;
@@ -81,7 +81,7 @@ preSavingsRouter.get('/', async (req: HouseholdRequest, res) => {
   res.json(preSavings.map(serializePreSaving));
 });
 
-preSavingsRouter.put('/bulk', userMiddleware, async (req: HouseholdRequest, res) => {
+preSavingsRouter.put('/bulk', async (req: HouseholdRequest, res) => {
   if (!Array.isArray(req.body)) {
     res.status(400).json({ error: 'リクエストボディは配列である必要があります' });
     return;

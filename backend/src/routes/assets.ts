@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { AssetGroup } from '@prisma/client';
-import { HouseholdRequest, householdMiddleware, userMiddleware } from '../middlewares/household';
+import { HouseholdRequest, authMiddleware } from '../middlewares/household';
 import {
   AssetNotFoundError,
   AssetValidationError,
@@ -50,7 +50,7 @@ function serializeAsset(asset: {
 }
 
 export const assetsRouter = Router();
-assetsRouter.use(householdMiddleware);
+assetsRouter.use(authMiddleware);
 
 assetsRouter.get('/', async (req: HouseholdRequest, res) => {
   const groupParam = req.query.assetGroup;
@@ -62,7 +62,7 @@ assetsRouter.get('/', async (req: HouseholdRequest, res) => {
   res.json(assets.map(serializeAsset));
 });
 
-assetsRouter.post('/', userMiddleware, async (req: HouseholdRequest, res) => {
+assetsRouter.post('/', async (req: HouseholdRequest, res) => {
   const { assetGroup, name, detail, ownerUserId, purpose, monthlyContribution, memo, sortOrder } =
     req.body ?? {};
   if (
@@ -103,7 +103,7 @@ assetsRouter.post('/', userMiddleware, async (req: HouseholdRequest, res) => {
   }
 });
 
-assetsRouter.put('/:id', userMiddleware, async (req: HouseholdRequest, res) => {
+assetsRouter.put('/:id', async (req: HouseholdRequest, res) => {
   if (!/^\d+$/.test(req.params.id)) {
     res.status(400).json({ error: 'idが不正です' });
     return;

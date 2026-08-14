@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { AuditAction } from '@prisma/client';
-import { HouseholdRequest, householdMiddleware } from '../middlewares/household';
+import { HouseholdRequest, authMiddleware } from '../middlewares/household';
 import { listAuditLogs } from '../services/auditLogService';
 
 function serializeAuditLog(log: {
@@ -26,7 +26,7 @@ function serializeAuditLog(log: {
 }
 
 export const auditLogsRouter = Router();
-auditLogsRouter.use(householdMiddleware);
+auditLogsRouter.use(authMiddleware);
 
 auditLogsRouter.get('/', async (req: HouseholdRequest, res) => {
   const { targetTable, limit } = req.query;

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { HouseholdRequest, householdMiddleware } from '../middlewares/household';
+import { HouseholdRequest, authMiddleware } from '../middlewares/household';
 import { listUsers } from '../services/userService';
 
 function serializeUser(user: { id: bigint; householdId: bigint; displayName: string }) {
@@ -11,7 +11,7 @@ function serializeUser(user: { id: bigint; householdId: bigint; displayName: str
 }
 
 export const usersRouter = Router();
-usersRouter.use(householdMiddleware);
+usersRouter.use(authMiddleware);
 
 usersRouter.get('/', async (req: HouseholdRequest, res) => {
   const users = await listUsers(req.householdId!);

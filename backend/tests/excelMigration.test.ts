@@ -11,13 +11,13 @@ import { readCellAmount } from '../src/migration/excelUtil';
 
 const FIXTURE_PATH = path.join(__dirname, 'fixtures', '雛形_家計簿_第1_4版.xlsm');
 
-const TEST_HOUSEHOLD_ID = 999959n;
-const USER_TAIYO = 999958n;
-const USER_MIRANO = 999957n;
+const TEST_HOUSEHOLD_ID = 999919n;
+const USER_TAIYO = 999918n;
+const USER_MIRANO = 999917n;
 
-const SYNTHETIC_HOUSEHOLD_ID = 999956n;
-const SYN_USER_TAIYO = 999955n;
-const SYN_USER_MIRANO = 999954n;
+const SYNTHETIC_HOUSEHOLD_ID = 999916n;
+const SYN_USER_TAIYO = 999915n;
+const SYN_USER_MIRANO = 999914n;
 
 // 年間推移シートの行レイアウト（費目マスタの並び順と一致。docs/03_詳細設計書.md 6章の実データ調査により判明）。
 // 収入: rows3-12（たいよう5費目→rows3-7, みらの5費目→rows8-12）
@@ -51,16 +51,16 @@ describe('Excelデータ移行（docs/03_詳細設計書.md 6章）', () => {
     await resetHousehold(TEST_HOUSEHOLD_ID);
     await prisma.user.createMany({
       data: [
-        { id: USER_TAIYO, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう' },
-        { id: USER_MIRANO, householdId: TEST_HOUSEHOLD_ID, displayName: 'みらの' },
+        { id: USER_TAIYO, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう', email: `user${USER_TAIYO}@test.local`, passwordHash: 'test-hash' },
+        { id: USER_MIRANO, householdId: TEST_HOUSEHOLD_ID, displayName: 'みらの', email: `user${USER_MIRANO}@test.local`, passwordHash: 'test-hash' },
       ],
     });
 
     await resetHousehold(SYNTHETIC_HOUSEHOLD_ID);
     await prisma.user.createMany({
       data: [
-        { id: SYN_USER_TAIYO, householdId: SYNTHETIC_HOUSEHOLD_ID, displayName: 'たいよう' },
-        { id: SYN_USER_MIRANO, householdId: SYNTHETIC_HOUSEHOLD_ID, displayName: 'みらの' },
+        { id: SYN_USER_TAIYO, householdId: SYNTHETIC_HOUSEHOLD_ID, displayName: 'たいよう', email: `user${SYN_USER_TAIYO}@test.local`, passwordHash: 'test-hash' },
+        { id: SYN_USER_MIRANO, householdId: SYNTHETIC_HOUSEHOLD_ID, displayName: 'みらの', email: `user${SYN_USER_MIRANO}@test.local`, passwordHash: 'test-hash' },
       ],
     });
   });

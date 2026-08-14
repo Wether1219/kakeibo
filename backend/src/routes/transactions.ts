@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { SplitType } from '@prisma/client';
-import { HouseholdRequest, householdMiddleware, userMiddleware } from '../middlewares/household';
+import { HouseholdRequest, authMiddleware } from '../middlewares/household';
 import {
   TransactionInput,
   TransactionNotFoundError,
@@ -78,7 +78,7 @@ function parseTransactionBody(body: unknown): TransactionInput | null {
 }
 
 export const transactionsRouter = Router();
-transactionsRouter.use(householdMiddleware);
+transactionsRouter.use(authMiddleware);
 
 transactionsRouter.get('/', async (req: HouseholdRequest, res) => {
   const { year, month, categoryId, limit, sort } = req.query;
@@ -112,7 +112,7 @@ transactionsRouter.get('/', async (req: HouseholdRequest, res) => {
   res.json(transactions.map(serializeTransaction));
 });
 
-transactionsRouter.post('/', userMiddleware, async (req: HouseholdRequest, res) => {
+transactionsRouter.post('/', async (req: HouseholdRequest, res) => {
   const input = parseTransactionBody(req.body);
   if (!input) {
     res.status(400).json({ error: 'transactionDate, categoryId, splitType, amountは必須です' });
@@ -138,7 +138,7 @@ transactionsRouter.post('/', userMiddleware, async (req: HouseholdRequest, res) 
   }
 });
 
-transactionsRouter.put('/:id', userMiddleware, async (req: HouseholdRequest, res) => {
+transactionsRouter.put('/:id', async (req: HouseholdRequest, res) => {
   if (!/^\d+$/.test(req.params.id)) {
     res.status(400).json({ error: 'idが不正です' });
     return;
@@ -172,7 +172,7 @@ transactionsRouter.put('/:id', userMiddleware, async (req: HouseholdRequest, res
   }
 });
 
-transactionsRouter.delete('/:id', userMiddleware, async (req: HouseholdRequest, res) => {
+transactionsRouter.delete('/:id', async (req: HouseholdRequest, res) => {
   if (!/^\d+$/.test(req.params.id)) {
     res.status(400).json({ error: 'idが不正です' });
     return;
