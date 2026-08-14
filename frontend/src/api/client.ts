@@ -38,8 +38,11 @@ export function getCurrentUserId(): string | null {
 // 呼び出し側はエンドポイントパスとリクエストボディのみを意識すればよい。
 export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const token = getAccessToken();
+  // FormData（ファイルアップロード等）の場合、Content-Typeはブラウザが境界(boundary)付きで
+  // 自動設定する必要があるため、ここでは固定しない。
+  const isFormData = options.body instanceof FormData;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string> | undefined),
   };
   if (token) {

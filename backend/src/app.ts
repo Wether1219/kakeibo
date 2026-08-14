@@ -1,6 +1,7 @@
 import express from 'express';
 import { authRouter } from './routes/auth';
 import { categoriesRouter } from './routes/categories';
+import { importRouter } from './routes/import';
 import { transactionsRouter } from './routes/transactions';
 import { incomesRouter } from './routes/incomes';
 import { preSavingsRouter } from './routes/preSavings';
@@ -27,5 +28,6 @@ export function createApp() {
   app.use('/api/v1/export', exportRouter);
   app.use('/api/v1/assets', assetsRouter);
   app.use('/api/v1/asset-balances', assetBalancesRouter);
+  app.use('/api/v1/import', importRouter);
   return app;
 }
