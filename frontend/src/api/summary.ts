@@ -68,3 +68,61 @@ export async function fetchAnnualSummary(year: number): Promise<AnnualSummary> {
   if (!res.ok) throw new Error('年間推移データの取得に失敗しました');
   return res.json();
 }
+
+export interface VisualizationBalance {
+  income: number;
+  preSaving: number;
+  expense: number;
+  remainingSaving: number;
+  totalSaving: number;
+}
+
+export interface VisualizationCategoryAmount {
+  categoryId: string;
+  icon: string | null;
+  name: string;
+  amount: number;
+}
+
+export interface VisualizationMonthlyAverageBalance {
+  income: number;
+  preSaving: number;
+  fixedExpense: number;
+  variableExpense: number;
+  remainingSaving: number;
+  totalSaving: number;
+  incomeByCategory: VisualizationCategoryAmount[];
+  preSavingByCategory: VisualizationCategoryAmount[];
+  fixedExpenseByCategory: VisualizationCategoryAmount[];
+  variableExpenseByCategory: VisualizationCategoryAmount[];
+}
+
+export interface VisualizationMonthlyRatio {
+  month: number;
+  expenseRatio: number;
+  savingRatio: number;
+}
+
+export interface VisualizationMember {
+  userId: string;
+  displayName: string;
+  monthlyAverage: VisualizationMonthlyAverageBalance;
+  bonusAverage: number;
+  annual: VisualizationBalance;
+  expenseRatio: number;
+  savingRatio: number;
+  monthlyRatios: VisualizationMonthlyRatio[];
+}
+
+export interface VisualizationSummary {
+  year: number;
+  members: VisualizationMember[];
+}
+
+export async function fetchVisualizationSummary(year: number): Promise<VisualizationSummary> {
+  const res = await fetch(`${API_BASE}/summary/visualization?year=${year}`, {
+    headers: headers(),
+  });
+  if (!res.ok) throw new Error('収支可視化データの取得に失敗しました');
+  return res.json();
+}

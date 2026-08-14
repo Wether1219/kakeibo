@@ -18,6 +18,8 @@ interface LineDataset {
   borderColor?: string;
   backgroundColor?: string;
   tension?: number;
+  borderDash?: number[];
+  pointRadius?: number;
 }
 
 interface Props {

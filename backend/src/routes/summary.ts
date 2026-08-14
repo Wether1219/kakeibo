@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { HouseholdRequest, householdMiddleware } from '../middlewares/household';
-import { SummaryValidationError, getAnnualSummary, getMonthlySummary } from '../services/summaryService';
+import {
+  SummaryValidationError,
+  getAnnualSummary,
+  getMonthlySummary,
+  getVisualizationSummary,
+} from '../services/summaryService';
 
 export const summaryRouter = Router();
 summaryRouter.use(householdMiddleware);
@@ -31,6 +36,24 @@ summaryRouter.get('/annual', async (req: HouseholdRequest, res) => {
   }
   try {
     const summary = await getAnnualSummary(req.householdId!, Number(year));
+    res.json(summary);
+  } catch (e) {
+    if (e instanceof SummaryValidationError) {
+      res.status(400).json({ error: e.message });
+      return;
+    }
+    throw e;
+  }
+});
+
+summaryRouter.get('/visualization', async (req: HouseholdRequest, res) => {
+  const { year } = req.query;
+  if (!/^\d+$/.test(String(year ?? ''))) {
+    res.status(400).json({ error: 'yearは必須です' });
+    return;
+  }
+  try {
+    const summary = await getVisualizationSummary(req.householdId!, Number(year));
     res.json(summary);
   } catch (e) {
     if (e instanceof SummaryValidationError) {
