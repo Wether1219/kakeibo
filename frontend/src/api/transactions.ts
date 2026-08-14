@@ -77,3 +77,14 @@ export async function createTransaction(
   }
   return res.json();
 }
+
+export async function deleteTransaction(id: string, userId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/transactions/${id}`, {
+    method: 'DELETE',
+    headers: headers(userId),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? '取引の削除に失敗しました');
+  }
+}
