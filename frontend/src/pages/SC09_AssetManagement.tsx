@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AssetGroup } from '../api/assets';
+import { AssetGroup, deactivateAsset } from '../api/assets';
 import { AddAssetModal } from '../components/AddAssetModal';
 import { AssetBalanceTable } from '../components/AssetBalanceTable';
 import { AssetGroupTab } from '../components/AssetGroupTab';
@@ -26,6 +26,18 @@ export function SC09_AssetManagement() {
   const [showAddModal, setShowAddModal] = useState(false);
 
   const { summary, loading, error, updateBalance, isSaving, reload } = useAssetBalances(year);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDelete = async (assetId: string, assetName: string) => {
+    if (!window.confirm(`「${assetName}」を削除しますか？`)) return;
+    setDeleteError(null);
+    try {
+      await deactivateAsset(assetId);
+      await reload();
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : String(e));
+    }
+  };
 
   const groupRows = useMemo(
     () => summary.assets.filter((a) => a.assetGroup === group),
@@ -76,6 +88,7 @@ export function SC09_AssetManagement() {
 
       {loading && <p className="text-sm text-gray-400">読み込み中...</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
 
       {!loading && (
         <>
@@ -85,6 +98,7 @@ export function SC09_AssetManagement() {
             total={groupTotal}
             onCellChange={updateBalance}
             isSaving={isSaving}
+            onDelete={handleDelete}
           />
 
           <div className="flex justify-end">

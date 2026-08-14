@@ -62,3 +62,14 @@ export async function createAsset(input: CreateAssetInput): Promise<Asset> {
   if (!res.ok) throw new Error('口座の追加に失敗しました');
   return res.json();
 }
+
+export async function deactivateAsset(id: string): Promise<Asset> {
+  const userId = await ensureCurrentUserId();
+  const res = await fetch(`${API_BASE}/assets/${id}`, {
+    method: 'PUT',
+    headers: headers(userId),
+    body: JSON.stringify({ isActive: false }),
+  });
+  if (!res.ok) throw new Error('口座の削除に失敗しました');
+  return res.json();
+}

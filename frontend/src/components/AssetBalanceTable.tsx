@@ -7,6 +7,7 @@ interface Props {
   total: number[];
   onCellChange: (assetId: string, month: number, value: number) => void;
   isSaving: (assetId: string, month: number) => boolean;
+  onDelete: (assetId: string, assetName: string) => void;
 }
 
 const MONTH_LABELS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
@@ -15,7 +16,14 @@ function formatYen(amount: number): string {
   return `¥${amount.toLocaleString('ja-JP')}`;
 }
 
-export function AssetBalanceTable({ rows, ownerSubtotals, total, onCellChange, isSaving }: Props) {
+export function AssetBalanceTable({
+  rows,
+  ownerSubtotals,
+  total,
+  onCellChange,
+  isSaving,
+  onDelete,
+}: Props) {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draftValue, setDraftValue] = useState('');
 
@@ -51,6 +59,7 @@ export function AssetBalanceTable({ rows, ownerSubtotals, total, onCellChange, i
                 {label}
               </th>
             ))}
+            <th className="px-2 py-2 border-b border-gray-200" />
           </tr>
         </thead>
         <tbody>
@@ -100,6 +109,15 @@ export function AssetBalanceTable({ rows, ownerSubtotals, total, onCellChange, i
                   </td>
                 );
               })}
+              <td className="px-2 py-1 text-center whitespace-nowrap">
+                <button
+                  type="button"
+                  className="text-xs text-red-500 hover:text-red-700 px-2"
+                  onClick={() => onDelete(row.assetId, row.assetName)}
+                >
+                  削除
+                </button>
+              </td>
             </tr>
           ))}
           {ownerSubtotals.map((owner) => (
@@ -112,6 +130,7 @@ export function AssetBalanceTable({ rows, ownerSubtotals, total, onCellChange, i
                   {formatYen(amount)}
                 </td>
               ))}
+              <td />
             </tr>
           ))}
           <tr className="bg-gray-50 font-bold">
@@ -121,6 +140,7 @@ export function AssetBalanceTable({ rows, ownerSubtotals, total, onCellChange, i
                 {formatYen(amount)}
               </td>
             ))}
+            <td />
           </tr>
         </tbody>
       </table>
