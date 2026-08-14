@@ -5,23 +5,20 @@ import { MonthSelector } from '../components/MonthSelector';
 import { RecentTransactions } from '../components/RecentTransactions';
 import { WeeklyBudgetProgress } from '../components/WeeklyBudgetProgress';
 import { useDashboard } from '../hooks/useDashboard';
+import { useYearMonthParams } from '../hooks/useYearMonthParams';
 
 // useTransactionForm.tsと同じキー（「自分」ユーザーの暫定選択。JWT認証実装時に置き換え）。
 const CURRENT_USER_KEY = 'kakeibo_current_user_id';
 
-const now = new Date();
-
 export function SC02_Dashboard() {
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const { year, month, setYearMonth } = useYearMonthParams();
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { summary, weeklyBudgets, recentTransactions, categories, users, loading, error, removeTransaction } =
     useDashboard(year, month);
 
   const handleChangeMonth = (nextYear: number, nextMonth: number) => {
-    setYear(nextYear);
-    setMonth(nextMonth);
+    setYearMonth(nextYear, nextMonth);
   };
 
   const handleDeleteTransaction = async (id: string) => {

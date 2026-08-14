@@ -1,13 +1,13 @@
-import { useState } from 'react';
 import { AnnualBalanceSection } from '../components/AnnualBalanceSection';
 import { AverageBalanceSection } from '../components/AverageBalanceSection';
 import { KpiCards } from '../components/KpiCards';
 import { RatioTrendChart } from '../components/RatioTrendChart';
 import { YearSelector } from '../components/YearSelector';
 import { useVisualizationSummary } from '../hooks/useVisualizationSummary';
+import { useYearParam } from '../hooks/useYearMonthParams';
 
 export function SC08_Visualization() {
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [year, setYear] = useYearParam();
   const { members, loading, error } = useVisualizationSummary(year);
 
   return (
