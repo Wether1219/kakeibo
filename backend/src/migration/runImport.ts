@@ -17,9 +17,7 @@ export interface ImportSummary {
 
 // docs/03_詳細設計書.md 6章：費目マスタ→incomes→pre_savings→transactions→weekly_budgetsの順で投入する
 // （後続テーブルは費目マスタ投入後のcategoryIdに依存するため）。
-export async function runImport(xlsmPath: string, householdId: bigint): Promise<ImportSummary> {
-  const wb = XLSX.readFile(xlsmPath, { cellFormula: true, cellDates: true });
-
+export async function runImportWorkbook(wb: XLSX.WorkBook, householdId: bigint): Promise<ImportSummary> {
   const monthSheetNames = listMonthSheetNames(wb);
   const monthSheets: MonthSheetInfo[] = monthSheetNames.map((name) =>
     readMonthSheetInfo(wb, name)
@@ -64,6 +62,18 @@ export async function runImport(xlsmPath: string, householdId: bigint): Promise<
     transactions,
     weeklyBudgets,
   };
+}
+
+// CLI用：ファイルパスから読み込む（npm run migrate:excel）。
+export async function runImport(xlsmPath: string, householdId: bigint): Promise<ImportSummary> {
+  const wb = XLSX.readFile(xlsmPath, { cellFormula: true, cellDates: true });
+  return runImportWorkbook(wb, householdId);
+}
+
+// API用：アップロードされたファイルのバッファから読み込む（POST /import/excel）。
+export async function runImportBuffer(buffer: Buffer, householdId: bigint): Promise<ImportSummary> {
+  const wb = XLSX.read(buffer, { type: 'buffer', cellFormula: true, cellDates: true });
+  return runImportWorkbook(wb, householdId);
 }
 
 if (require.main === module) {

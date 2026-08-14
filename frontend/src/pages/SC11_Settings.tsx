@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react';
+import { ChangeEvent, useEffect, useState } from 'react';
 import { User, fetchUsers } from '../api/users';
 import { AuditLog, fetchAuditLogs } from '../api/auditLogs';
 import { downloadExport } from '../api/export';
+import { ImportSummary, importExcel } from '../api/import';
 
-type SettingsTab = 'members' | 'history' | 'export';
+type SettingsTab = 'members' | 'history' | 'export' | 'import';
 
 const TABS: { key: SettingsTab; label: string }[] = [
   { key: 'members', label: '世帯メンバー' },
   { key: 'history', label: '変更履歴' },
   { key: 'export', label: 'エクスポート' },
+  { key: 'import', label: 'インポート' },
 ];
 
 const TARGET_TABLE_LABELS: Record<string, string> = {
@@ -48,6 +50,10 @@ export function SC11_Settings() {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<'csv' | 'xlsx' | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<ImportSummary | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +87,35 @@ export function SC11_Settings() {
       setExportError(e instanceof Error ? e.message : String(e));
     } finally {
       setExporting(null);
+    }
+  };
+
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    setImportFile(e.target.files?.[0] ?? null);
+    setImportResult(null);
+    setImportError(null);
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+    if (
+      !window.confirm(
+        'インポートを実行しますか？\n取引データは実行のたびに追加され、重複防止は行われません。同じファイルを2回取り込むと取引が重複するのでご注意ください。'
+      )
+    ) {
+      return;
+    }
+    setImporting(true);
+    setImportError(null);
+    setImportResult(null);
+    try {
+      const summary = await importExcel(importFile);
+      setImportResult(summary);
+      setImportFile(null);
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -166,6 +201,47 @@ export function SC11_Settings() {
               {exporting === 'xlsx' ? 'ダウンロード中...' : 'Excelダウンロード'}
             </button>
           </div>
+        </div>
+      )}
+
+      {!loading && tab === 'import' && (
+        <div className="space-y-3">
+          <p className="text-sm text-gray-500">
+            現行Excel家計簿（.xlsm）から費目・収入・先取り貯金・取引・週次予算をまとめて取り込みます。
+          </p>
+          <p className="text-xs text-amber-600">
+            注意：取引データは取り込みのたびに追加されます（重複防止は行われないため、同じファイルを複数回取り込まないでください）。
+          </p>
+          <input
+            type="file"
+            accept=".xlsm,.xlsx"
+            onChange={handleFileSelect}
+            className="text-sm"
+          />
+          {importError && <p className="text-sm text-red-600">{importError}</p>}
+          <div>
+            <button
+              type="button"
+              disabled={!importFile || importing}
+              onClick={handleImport}
+              className="bg-blue-600 text-white rounded px-4 py-2 text-sm hover:bg-blue-700 disabled:opacity-50"
+            >
+              {importing ? '取込中...' : 'インポート実行'}
+            </button>
+          </div>
+          {importResult && (
+            <div className="text-sm bg-gray-50 rounded p-3 space-y-1">
+              <p className="font-bold text-green-700 mb-1">取込が完了しました</p>
+              <p>
+                費目: 新規{importResult.categories.createdCount}件 / 更新
+                {importResult.categories.updatedCount}件
+              </p>
+              <p>収入: {importResult.incomes.importedCount}件</p>
+              <p>先取り貯金: {importResult.preSavings.importedCount}件</p>
+              <p>取引: {importResult.transactions.importedCount}件</p>
+              <p>週次予算: {importResult.weeklyBudgets.importedCount}件</p>
+            </div>
+          )}
         </div>
       )}
     </div>
