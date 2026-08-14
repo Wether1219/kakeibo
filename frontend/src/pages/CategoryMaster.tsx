@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { useCategories } from '../hooks/useCategories';
 import { CategoryTypeSection } from '../components/CategoryTypeSection';
+import { IconPicker } from '../components/IconPicker';
 import type { Category, CategoryType } from '../api/categories';
 
 const TYPE_LABELS: Record<CategoryType, string> = {
@@ -61,13 +62,7 @@ export function CategoryMaster() {
         </div>
         <div>
           <label className="block text-xs text-gray-500">アイコン</label>
-          <input
-            className="w-16 border border-gray-300 rounded px-2 py-1 text-center"
-            value={newIcon}
-            maxLength={4}
-            onChange={(e) => setNewIcon(e.target.value)}
-            placeholder="🍙"
-          />
+          <IconPicker value={newIcon} onChange={setNewIcon} />
         </div>
         <div className="flex-1 min-w-[8rem]">
           <label className="block text-xs text-gray-500">費目名</label>
