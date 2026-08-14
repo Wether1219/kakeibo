@@ -7,6 +7,7 @@ import { LineChart } from '../components/charts/LineChart';
 import { NetWorthSummary } from '../components/NetWorthSummary';
 import { YearSelector } from '../components/YearSelector';
 import { useAssetBalances } from '../hooks/useAssetBalances';
+import { useYearParam } from '../hooks/useYearMonthParams';
 
 const MONTH_LABELS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 
@@ -22,7 +23,7 @@ const GROUP_COLORS: Record<AssetGroup, string> = {
 };
 
 export function SC09_AssetManagement() {
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [year, setYear] = useYearParam();
   const [group, setGroup] = useState<AssetGroupTabValue>('cash_deposit');
   const [showAddModal, setShowAddModal] = useState(false);
   const isNetWorth = group === 'net_worth';

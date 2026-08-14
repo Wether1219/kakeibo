@@ -9,6 +9,7 @@ import {
 } from '../components/MonthlySavingsSummary';
 import { YearSelector } from '../components/YearSelector';
 import { useAnnualSummary } from '../hooks/useAnnualSummary';
+import { useYearParam } from '../hooks/useYearMonthParams';
 
 const MONTH_LABELS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 const SERIES_COLORS = ['#4C6EF5', '#F76707', '#12B886', '#E64980'];
@@ -26,7 +27,7 @@ function sumMonths(rowsList: { months: number[] }[]): number[] {
 }
 
 export function SC07_AnnualTrend() {
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [year, setYear] = useYearParam();
   const [tab, setTab] = useState<SummaryTabType>('variable_expense');
   const [selectedCategoryName, setSelectedCategoryName] = useState<string>('');
   const [checkedUserIds, setCheckedUserIds] = useState<Set<string>>(new Set());
