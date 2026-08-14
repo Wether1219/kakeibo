@@ -10,14 +10,37 @@ function formatYen(amount: number): string {
   return `¥${amount.toLocaleString('ja-JP')}`;
 }
 
+interface UserTotal {
+  userId: string;
+  displayName: string;
+  months: number[];
+  annualTotal: number;
+}
+
 export function AnnualCrossTable({ rows }: Props) {
   const totalMonths = new Array(12).fill(0);
   let totalAnnual = 0;
+  const userTotals = new Map<string, UserTotal>();
   for (const row of rows) {
     row.months.forEach((amount, i) => {
       totalMonths[i] += amount;
     });
     totalAnnual += row.annualTotal;
+
+    let userTotal = userTotals.get(row.userId);
+    if (!userTotal) {
+      userTotal = {
+        userId: row.userId,
+        displayName: row.displayName,
+        months: new Array(12).fill(0),
+        annualTotal: 0,
+      };
+      userTotals.set(row.userId, userTotal);
+    }
+    row.months.forEach((amount, i) => {
+      userTotal!.months[i] += amount;
+    });
+    userTotal.annualTotal += row.annualTotal;
   }
 
   return (
@@ -55,6 +78,19 @@ export function AnnualCrossTable({ rows }: Props) {
               <td className="px-3 py-2 text-right font-medium whitespace-nowrap">
                 {formatYen(row.annualTotal)}
               </td>
+            </tr>
+          ))}
+          {Array.from(userTotals.values()).map((userTotal) => (
+            <tr key={`total-${userTotal.userId}`} className="bg-gray-50 font-medium">
+              <td className="sticky left-0 bg-gray-50 z-10 px-3 py-2 whitespace-nowrap">
+                合計（{userTotal.displayName}）
+              </td>
+              {userTotal.months.map((amount, i) => (
+                <td key={i} className="px-3 py-2 text-right whitespace-nowrap">
+                  {formatYen(amount)}
+                </td>
+              ))}
+              <td className="px-3 py-2 text-right whitespace-nowrap">{formatYen(userTotal.annualTotal)}</td>
             </tr>
           ))}
           <tr className="bg-gray-50 font-bold">
