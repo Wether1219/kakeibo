@@ -1,3 +1,5 @@
+import { ensureCurrentUserId } from './users';
+
 const API_BASE = '/api/v1';
 
 // 認証実装までの暫定措置。フェーズ0でJWTベースのAPIクライアントに置き換える。
@@ -25,14 +27,14 @@ export interface IncomeBulkItem {
   amount: number;
 }
 
-function headers() {
+function headers(userId?: string) {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'x-household-id': TEMP_HOUSEHOLD_ID,
   };
-  const userId = localStorage.getItem(CURRENT_USER_KEY);
-  if (userId) {
-    headers['x-user-id'] = userId;
+  const resolvedUserId = userId ?? localStorage.getItem(CURRENT_USER_KEY);
+  if (resolvedUserId) {
+    headers['x-user-id'] = resolvedUserId;
   }
   return headers;
 }
@@ -46,9 +48,10 @@ export async function fetchIncomes(year: number, month: number): Promise<Income[
 }
 
 export async function bulkUpdateIncomes(items: IncomeBulkItem[]): Promise<Income[]> {
+  const userId = await ensureCurrentUserId();
   const res = await fetch(`${API_BASE}/incomes/bulk`, {
     method: 'PUT',
-    headers: headers(),
+    headers: headers(userId),
     body: JSON.stringify(items),
   });
   if (!res.ok) throw new Error('収入の保存に失敗しました');
