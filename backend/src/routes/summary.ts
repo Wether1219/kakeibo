@@ -6,6 +6,7 @@ import {
   getMonthlySummary,
   getVisualizationSummary,
 } from '../services/summaryService';
+import { generateDueTransactions } from '../services/recurringTransactionService';
 
 export const summaryRouter = Router();
 summaryRouter.use(authMiddleware);
@@ -17,6 +18,11 @@ summaryRouter.get('/monthly', async (req: HouseholdRequest, res) => {
     return;
   }
   try {
+    const now = new Date();
+    // 過去月を遡って生成しないよう、実際の「今月」を表示したときだけ定期取引を生成する。
+    if (Number(year) === now.getFullYear() && Number(month) === now.getMonth() + 1) {
+      await generateDueTransactions(req.householdId!, Number(year), Number(month), req.userId!);
+    }
     const summary = await getMonthlySummary(req.householdId!, Number(year), Number(month));
     res.json(summary);
   } catch (e) {

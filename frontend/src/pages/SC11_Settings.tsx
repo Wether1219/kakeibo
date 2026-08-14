@@ -3,14 +3,16 @@ import { User, fetchUsers } from '../api/users';
 import { AuditLog, fetchAuditLogs } from '../api/auditLogs';
 import { downloadExport } from '../api/export';
 import { ImportSummary, importExcel } from '../api/import';
+import { RecurringTransactionsPanel } from '../components/RecurringTransactionsPanel';
 
-type SettingsTab = 'members' | 'history' | 'export' | 'import';
+type SettingsTab = 'members' | 'history' | 'export' | 'import' | 'recurring';
 
 const TABS: { key: SettingsTab; label: string }[] = [
   { key: 'members', label: '世帯メンバー' },
   { key: 'history', label: '変更履歴' },
   { key: 'export', label: 'エクスポート' },
   { key: 'import', label: 'インポート' },
+  { key: 'recurring', label: '定期取引' },
 ];
 
 const TARGET_TABLE_LABELS: Record<string, string> = {
@@ -123,14 +125,16 @@ export function SC11_Settings() {
     <div className="max-w-2xl mx-auto p-4 space-y-4">
       <h1 className="text-xl font-bold">設定・履歴</h1>
 
-      <div className="flex gap-2 border-b border-gray-200">
+      <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
         {TABS.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
             className={`px-3 py-2 text-sm font-bold border-b-2 -mb-px ${
-              tab === t.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'
+              tab === t.key
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 dark:text-gray-400'
             }`}
           >
             {t.label}
@@ -138,40 +142,40 @@ export function SC11_Settings() {
         ))}
       </div>
 
-      {loading && <p className="text-sm text-gray-400">読み込み中...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {!loading && tab === 'members' && (
-        <div className="rounded border border-gray-200 bg-white divide-y divide-gray-100">
+        <div className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
           {users.map((u) => (
             <div key={u.id} className="px-4 py-3 text-sm">
               {u.displayName}
             </div>
           ))}
-          <p className="px-4 py-3 text-xs text-gray-400">
+          <p className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500">
             メンバーの追加・編集にはアカウント発行の仕組みが別途必要なため、現時点では一覧表示のみに対応しています。
           </p>
         </div>
       )}
 
       {!loading && tab === 'history' && (
-        <div className="rounded border border-gray-200 bg-white divide-y divide-gray-100">
+        <div className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
           {logs.length === 0 && (
-            <p className="px-4 py-4 text-sm text-gray-400">変更履歴がありません</p>
+            <p className="px-4 py-4 text-sm text-gray-400 dark:text-gray-500">変更履歴がありません</p>
           )}
           {logs.map((log) => (
             <details key={log.id} className="px-4 py-2 text-sm">
               <summary className="cursor-pointer select-none flex flex-wrap items-center gap-2">
-                <span className="text-gray-400 w-32 shrink-0">{formatDateTime(log.createdAt)}</span>
+                <span className="text-gray-400 dark:text-gray-500 w-32 shrink-0">{formatDateTime(log.createdAt)}</span>
                 <span className="w-12 shrink-0 font-bold">{ACTION_LABELS[log.action] ?? log.action}</span>
                 <span className="flex-1 min-w-[6rem]">
                   {TARGET_TABLE_LABELS[log.targetTable] ?? log.targetTable}
                 </span>
-                <span className="text-gray-500 shrink-0">
+                <span className="text-gray-500 dark:text-gray-400 shrink-0">
                   {userMap.get(log.userId)?.displayName ?? '-'}
                 </span>
               </summary>
-              <pre className="mt-2 bg-gray-50 rounded p-2 text-xs overflow-x-auto">
+              <pre className="mt-2 bg-gray-50 dark:bg-gray-800 rounded p-2 text-xs overflow-x-auto">
                 {JSON.stringify(log.diff, null, 2)}
               </pre>
             </details>
@@ -181,8 +185,8 @@ export function SC11_Settings() {
 
       {!loading && tab === 'export' && (
         <div className="space-y-3">
-          <p className="text-sm text-gray-500">世帯のデータをファイルとしてダウンロードできます。</p>
-          {exportError && <p className="text-sm text-red-600">{exportError}</p>}
+          <p className="text-sm text-gray-500 dark:text-gray-400">世帯のデータをファイルとしてダウンロードできます。</p>
+          {exportError && <p className="text-sm text-red-600 dark:text-red-400">{exportError}</p>}
           <div className="flex gap-2">
             <button
               type="button"
@@ -206,10 +210,10 @@ export function SC11_Settings() {
 
       {!loading && tab === 'import' && (
         <div className="space-y-3">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             現行Excel家計簿（.xlsm）から費目・収入・先取り貯金・取引・週次予算をまとめて取り込みます。
           </p>
-          <p className="text-xs text-amber-600">
+          <p className="text-xs text-amber-600 dark:text-amber-400">
             注意：取引データは取り込みのたびに追加されます（重複防止は行われないため、同じファイルを複数回取り込まないでください）。
           </p>
           <input
@@ -218,7 +222,7 @@ export function SC11_Settings() {
             onChange={handleFileSelect}
             className="text-sm"
           />
-          {importError && <p className="text-sm text-red-600">{importError}</p>}
+          {importError && <p className="text-sm text-red-600 dark:text-red-400">{importError}</p>}
           <div>
             <button
               type="button"
@@ -230,8 +234,8 @@ export function SC11_Settings() {
             </button>
           </div>
           {importResult && (
-            <div className="text-sm bg-gray-50 rounded p-3 space-y-1">
-              <p className="font-bold text-green-700 mb-1">取込が完了しました</p>
+            <div className="text-sm bg-gray-50 dark:bg-gray-800 rounded p-3 space-y-1">
+              <p className="font-bold text-green-700 dark:text-green-400 mb-1">取込が完了しました</p>
               <p>
                 費目: 新規{importResult.categories.createdCount}件 / 更新
                 {importResult.categories.updatedCount}件
@@ -244,6 +248,8 @@ export function SC11_Settings() {
           )}
         </div>
       )}
+
+      {tab === 'recurring' && <RecurringTransactionsPanel />}
     </div>
   );
 }
