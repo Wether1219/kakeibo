@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { prisma } from '../src/prisma';
+import { authHeader } from './helpers/auth';
 
 const TEST_HOUSEHOLD_ID = 999979n;
 const OTHER_HOUSEHOLD_ID = 999978n;
@@ -26,8 +27,8 @@ beforeAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: [USER_ID, OTHER_USER_ID] } } });
   await prisma.user.createMany({
     data: [
-      { id: USER_ID, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう' },
-      { id: OTHER_USER_ID, householdId: OTHER_HOUSEHOLD_ID, displayName: 'みらの' },
+      { id: USER_ID, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう', email: `user${USER_ID}@test.local`, passwordHash: 'test-hash' },
+      { id: OTHER_USER_ID, householdId: OTHER_HOUSEHOLD_ID, displayName: 'みらの', email: `user${OTHER_USER_ID}@test.local`, passwordHash: 'test-hash' },
     ],
   });
 });
@@ -52,7 +53,7 @@ afterAll(async () => {
 });
 
 describe('/api/v1/audit-logs', () => {
-  it('x-household-idヘッダーがない場合は401', async () => {
+  it('Authorizationヘッダーがない場合は401', async () => {
     const res = await request(app).get('/api/v1/audit-logs');
     expect(res.status).toBe(401);
   });
@@ -60,25 +61,22 @@ describe('/api/v1/audit-logs', () => {
   it('費目の作成・更新・無効化がそれぞれcreate/update/deleteとして記録される', async () => {
     const createRes = await request(app)
       .post('/api/v1/categories')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send({ type: 'variable_expense', name: '娯楽費' });
     const id = createRes.body.id;
 
     await request(app)
       .put(`/api/v1/categories/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send({ name: '趣味費' });
 
     await request(app)
       .delete(`/api/v1/categories/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
 
     const res = await request(app)
       .get('/api/v1/audit-logs?targetTable=categories')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(3);
 
@@ -98,8 +96,7 @@ describe('/api/v1/audit-logs', () => {
     const currentYear = new Date().getFullYear();
     const createRes = await request(app)
       .post('/api/v1/transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send({
         transactionDate: `${currentYear}-05-10`,
         categoryId,
@@ -111,12 +108,11 @@ describe('/api/v1/audit-logs', () => {
 
     await request(app)
       .delete(`/api/v1/transactions/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
 
     const res = await request(app)
       .get('/api/v1/audit-logs?targetTable=transactions')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(2);
     expect(res.body.map((log: { action: string }) => log.action)).toEqual(['delete', 'create']);
@@ -127,13 +123,12 @@ describe('/api/v1/audit-logs', () => {
     for (let i = 0; i < 3; i++) {
       await request(app)
         .post('/api/v1/categories')
-        .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-        .set('x-user-id', USER_ID.toString())
+        .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
         .send({ type: 'variable_expense', name: `費目${i}` });
     }
     const res = await request(app)
       .get('/api/v1/audit-logs?limit=2')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(2);
   });
@@ -144,13 +139,12 @@ describe('/api/v1/audit-logs', () => {
     });
     await request(app)
       .put(`/api/v1/categories/${otherCategory.id}`)
-      .set('x-household-id', OTHER_HOUSEHOLD_ID.toString())
-      .set('x-user-id', OTHER_USER_ID.toString())
+      .set('Authorization', authHeader(OTHER_HOUSEHOLD_ID, OTHER_USER_ID))
       .send({ name: '水道光熱費' });
 
     const res = await request(app)
       .get('/api/v1/audit-logs')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(0);
 

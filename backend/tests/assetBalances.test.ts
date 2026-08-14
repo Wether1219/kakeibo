@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { prisma } from '../src/prisma';
+import { authHeader } from './helpers/auth';
 
 const TEST_HOUSEHOLD_ID = 999949n;
 const OTHER_HOUSEHOLD_ID = 999948n;
@@ -29,8 +30,8 @@ beforeAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: [USER_A, USER_B] } } });
   await prisma.user.createMany({
     data: [
-      { id: USER_A, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう' },
-      { id: USER_B, householdId: TEST_HOUSEHOLD_ID, displayName: 'みらの' },
+      { id: USER_A, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう', email: `user${USER_A}@test.local`, passwordHash: 'test-hash' },
+      { id: USER_B, householdId: TEST_HOUSEHOLD_ID, displayName: 'みらの', email: `user${USER_B}@test.local`, passwordHash: 'test-hash' },
     ],
   });
   const assetA = await prisma.asset.create({
@@ -74,7 +75,7 @@ afterAll(async () => {
 });
 
 describe('/api/v1/asset-balances', () => {
-  it('x-household-idヘッダーがない場合は401', async () => {
+  it('Authorizationヘッダーがない場合は401', async () => {
     const res = await request(app).get(`/api/v1/asset-balances?year=${YEAR}`);
     expect(res.status).toBe(401);
   });
@@ -82,15 +83,14 @@ describe('/api/v1/asset-balances', () => {
   it('yearがない場合は400', async () => {
     const res = await request(app)
       .get('/api/v1/asset-balances')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(400);
   });
 
   it('一括登録して人別小計・合計付きで取得できる（更新も新規作成にならない）', async () => {
     const putRes = await request(app)
       .put('/api/v1/asset-balances/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send([
         { assetId: assetAId, year: YEAR, month: 1, balance: 100000 },
         { assetId: assetBId, year: YEAR, month: 1, balance: 50000 },
@@ -100,15 +100,14 @@ describe('/api/v1/asset-balances', () => {
 
     const updateRes = await request(app)
       .put('/api/v1/asset-balances/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send([{ assetId: assetAId, year: YEAR, month: 1, balance: 120000 }]);
     expect(updateRes.body).toHaveLength(1);
     expect(updateRes.body[0].balance).toBe(120000);
 
     const getRes = await request(app)
       .get(`/api/v1/asset-balances?year=${YEAR}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(getRes.status).toBe(200);
 
     const assetARow = getRes.body.assets.find((a: { assetId: string }) => a.assetId === assetAId);
@@ -132,8 +131,7 @@ describe('/api/v1/asset-balances', () => {
   it('assetIdが不正な場合は400', async () => {
     const res = await request(app)
       .put('/api/v1/asset-balances/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send([{ assetId: '9999999', year: YEAR, month: 1, balance: 1000 }]);
     expect(res.status).toBe(400);
   });
@@ -141,15 +139,13 @@ describe('/api/v1/asset-balances', () => {
   it('monthが範囲外（0または13）は400', async () => {
     const resZero = await request(app)
       .put('/api/v1/asset-balances/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send([{ assetId: assetAId, year: YEAR, month: 0, balance: 1000 }]);
     expect(resZero.status).toBe(400);
 
     const resThirteen = await request(app)
       .put('/api/v1/asset-balances/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send([{ assetId: assetAId, year: YEAR, month: 13, balance: 1000 }]);
     expect(resThirteen.status).toBe(400);
   });
@@ -165,8 +161,7 @@ describe('/api/v1/asset-balances', () => {
     });
     const res = await request(app)
       .put('/api/v1/asset-balances/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_A.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .send([{ assetId: otherAsset.id.toString(), year: YEAR, month: 1, balance: 1000 }]);
     expect(res.status).toBe(400);
 

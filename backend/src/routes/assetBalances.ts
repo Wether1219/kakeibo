@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { HouseholdRequest, householdMiddleware, userMiddleware } from '../middlewares/household';
+import { HouseholdRequest, authMiddleware } from '../middlewares/household';
 import {
   AssetBalanceInput,
   AssetBalanceValidationError,
@@ -47,7 +47,7 @@ function parseAssetBalanceItem(item: unknown): AssetBalanceInput | null {
 }
 
 export const assetBalancesRouter = Router();
-assetBalancesRouter.use(householdMiddleware);
+assetBalancesRouter.use(authMiddleware);
 
 assetBalancesRouter.get('/', async (req: HouseholdRequest, res) => {
   const { year } = req.query;
@@ -67,7 +67,7 @@ assetBalancesRouter.get('/', async (req: HouseholdRequest, res) => {
   }
 });
 
-assetBalancesRouter.put('/bulk', userMiddleware, async (req: HouseholdRequest, res) => {
+assetBalancesRouter.put('/bulk', async (req: HouseholdRequest, res) => {
   if (!Array.isArray(req.body)) {
     res.status(400).json({ error: 'リクエストボディは配列である必要があります' });
     return;

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { CategoryType } from '@prisma/client';
-import { HouseholdRequest, householdMiddleware, userMiddleware } from '../middlewares/household';
+import { HouseholdRequest, authMiddleware } from '../middlewares/household';
 import {
   CategoryNotFoundError,
   DuplicateCategoryError,
@@ -40,7 +40,7 @@ function serializeCategory(category: {
 }
 
 export const categoriesRouter = Router();
-categoriesRouter.use(householdMiddleware);
+categoriesRouter.use(authMiddleware);
 
 categoriesRouter.get('/', async (req: HouseholdRequest, res) => {
   const typeParam = req.query.type;
@@ -52,7 +52,7 @@ categoriesRouter.get('/', async (req: HouseholdRequest, res) => {
   res.json(categories.map(serializeCategory));
 });
 
-categoriesRouter.post('/', userMiddleware, async (req: HouseholdRequest, res) => {
+categoriesRouter.post('/', async (req: HouseholdRequest, res) => {
   const { type, name, icon } = req.body ?? {};
   if (!isCategoryType(type) || typeof name !== 'string' || name.trim() === '') {
     res.status(400).json({ error: 'type, nameは必須です' });
@@ -81,7 +81,7 @@ categoriesRouter.post('/', userMiddleware, async (req: HouseholdRequest, res) =>
   }
 });
 
-categoriesRouter.put('/:id', userMiddleware, async (req: HouseholdRequest, res) => {
+categoriesRouter.put('/:id', async (req: HouseholdRequest, res) => {
   if (!/^\d+$/.test(req.params.id)) {
     res.status(400).json({ error: 'idが不正です' });
     return;
@@ -123,7 +123,7 @@ categoriesRouter.put('/:id', userMiddleware, async (req: HouseholdRequest, res) 
   }
 });
 
-categoriesRouter.delete('/:id', userMiddleware, async (req: HouseholdRequest, res) => {
+categoriesRouter.delete('/:id', async (req: HouseholdRequest, res) => {
   if (!/^\d+$/.test(req.params.id)) {
     res.status(400).json({ error: 'idが不正です' });
     return;

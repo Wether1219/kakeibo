@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { HouseholdRequest, householdMiddleware, userMiddleware } from '../middlewares/household';
+import { HouseholdRequest, authMiddleware } from '../middlewares/household';
 import {
   WeeklyBudgetInput,
   WeeklyBudgetValidationError,
@@ -54,7 +54,7 @@ function parseWeeklyBudgetItem(item: unknown): WeeklyBudgetInput | null {
 }
 
 export const weeklyBudgetsRouter = Router();
-weeklyBudgetsRouter.use(householdMiddleware);
+weeklyBudgetsRouter.use(authMiddleware);
 
 weeklyBudgetsRouter.get('/', async (req: HouseholdRequest, res) => {
   const { year, month } = req.query;
@@ -74,7 +74,7 @@ weeklyBudgetsRouter.get('/', async (req: HouseholdRequest, res) => {
   }
 });
 
-weeklyBudgetsRouter.put('/bulk', userMiddleware, async (req: HouseholdRequest, res) => {
+weeklyBudgetsRouter.put('/bulk', async (req: HouseholdRequest, res) => {
   if (!Array.isArray(req.body)) {
     res.status(400).json({ error: 'リクエストボディは配列である必要があります' });
     return;

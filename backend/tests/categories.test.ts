@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { prisma } from '../src/prisma';
+import { authHeader } from './helpers/auth';
 
 const TEST_HOUSEHOLD_ID = 999999n;
 const OTHER_HOUSEHOLD_ID = 999998n;
@@ -23,8 +24,8 @@ beforeAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: [USER_ID, OTHER_USER_ID] } } });
   await prisma.user.createMany({
     data: [
-      { id: USER_ID, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう' },
-      { id: OTHER_USER_ID, householdId: OTHER_HOUSEHOLD_ID, displayName: 'みらの' },
+      { id: USER_ID, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう', email: `user${USER_ID}@test.local`, passwordHash: 'test-hash' },
+      { id: OTHER_USER_ID, householdId: OTHER_HOUSEHOLD_ID, displayName: 'みらの', email: `user${OTHER_USER_ID}@test.local`, passwordHash: 'test-hash' },
     ],
   });
 });
@@ -44,7 +45,7 @@ afterAll(async () => {
 });
 
 describe('/api/v1/categories', () => {
-  it('x-household-idヘッダーがない場合は401', async () => {
+  it('Authorizationヘッダーがない場合は401', async () => {
     const res = await request(app).get('/api/v1/categories');
     expect(res.status).toBe(401);
   });
@@ -52,8 +53,7 @@ describe('/api/v1/categories', () => {
   it('費目を追加して一覧取得できる', async () => {
     const createRes = await request(app)
       .post('/api/v1/categories')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send({ type: 'variable_expense', name: '食費', icon: '🍙' });
     expect(createRes.status).toBe(201);
     expect(createRes.body).toMatchObject({
@@ -65,7 +65,7 @@ describe('/api/v1/categories', () => {
 
     const listRes = await request(app)
       .get('/api/v1/categories')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(listRes.status).toBe(200);
     expect(listRes.body).toHaveLength(1);
     expect(listRes.body[0].name).toBe('食費');
@@ -74,18 +74,16 @@ describe('/api/v1/categories', () => {
   it('typeで絞り込める', async () => {
     await request(app)
       .post('/api/v1/categories')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send({ type: 'variable_expense', name: '食費' });
     await request(app)
       .post('/api/v1/categories')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send({ type: 'income', name: '給与' });
 
     const res = await request(app)
       .get('/api/v1/categories?type=income')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].type).toBe('income');
@@ -94,13 +92,11 @@ describe('/api/v1/categories', () => {
   it('同一世帯・同一区分・同一名は重複エラー(409)', async () => {
     await request(app)
       .post('/api/v1/categories')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send({ type: 'variable_expense', name: '食費' });
     const res = await request(app)
       .post('/api/v1/categories')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send({ type: 'variable_expense', name: '食費' });
     expect(res.status).toBe(409);
   });
@@ -108,15 +104,13 @@ describe('/api/v1/categories', () => {
   it('名前・アイコン・並び順を更新できる', async () => {
     const createRes = await request(app)
       .post('/api/v1/categories')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send({ type: 'fixed_expense', name: '家賃' });
     const id = createRes.body.id;
 
     const updateRes = await request(app)
       .put(`/api/v1/categories/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send({ name: '住居費', icon: '🏠', sortOrder: 3 });
 
     expect(updateRes.status).toBe(200);
@@ -126,42 +120,37 @@ describe('/api/v1/categories', () => {
   it('他世帯の費目は更新・無効化できない(404)', async () => {
     const createRes = await request(app)
       .post('/api/v1/categories')
-      .set('x-household-id', OTHER_HOUSEHOLD_ID.toString())
-      .set('x-user-id', OTHER_USER_ID.toString())
+      .set('Authorization', authHeader(OTHER_HOUSEHOLD_ID, OTHER_USER_ID))
       .send({ type: 'fixed_expense', name: '光熱費' });
     const id = createRes.body.id;
 
     const updateRes = await request(app)
       .put(`/api/v1/categories/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send({ name: '不正更新' });
     expect(updateRes.status).toBe(404);
 
     const deleteRes = await request(app)
       .delete(`/api/v1/categories/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(deleteRes.status).toBe(404);
   });
 
   it('DELETEは論理削除でis_active=falseになり一覧から見えなくなる', async () => {
     const createRes = await request(app)
       .post('/api/v1/categories')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send({ type: 'variable_expense', name: '娯楽費' });
     const id = createRes.body.id;
 
     const deleteRes = await request(app)
       .delete(`/api/v1/categories/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(deleteRes.status).toBe(204);
 
     const listRes = await request(app)
       .get('/api/v1/categories')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     const found = listRes.body.find((c: { id: string }) => c.id === id);
     expect(found.isActive).toBe(false);
   });
@@ -169,21 +158,18 @@ describe('/api/v1/categories', () => {
   it('無効化した費目と同名で再追加すると再有効化される（同じidのまま）', async () => {
     const createRes = await request(app)
       .post('/api/v1/categories')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send({ type: 'variable_expense', name: '交際費', icon: '🍻' });
     const id = createRes.body.id;
 
     const deleteRes = await request(app)
       .delete(`/api/v1/categories/${id}`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(deleteRes.status).toBe(204);
 
     const recreateRes = await request(app)
       .post('/api/v1/categories')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send({ type: 'variable_expense', name: '交際費', icon: '🎉' });
     expect(recreateRes.status).toBe(201);
     expect(recreateRes.body).toMatchObject({
@@ -195,7 +181,7 @@ describe('/api/v1/categories', () => {
 
     const listRes = await request(app)
       .get('/api/v1/categories')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(listRes.body.filter((c: { name: string }) => c.name === '交際費')).toHaveLength(1);
   });
 });

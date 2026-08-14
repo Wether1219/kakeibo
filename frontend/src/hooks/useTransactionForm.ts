@@ -2,11 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import * as categoriesApi from '../api/categories';
 import * as usersApi from '../api/users';
 import * as transactionsApi from '../api/transactions';
+import { getCurrentUserId } from '../api/client';
 import type { Category, CategoryType } from '../api/categories';
 import type { User } from '../api/users';
-
-// 認証実装までの暫定措置。「自分」が誰かをブラウザに保存しておく（JWT認証実装時に置き換え）。
-const CURRENT_USER_KEY = 'kakeibo_current_user_id';
 
 export type ExpenseType = Extract<CategoryType, 'fixed_expense' | 'variable_expense'>;
 export type TargetSelection = 'self' | 'other' | 'shared';
@@ -22,9 +20,8 @@ export function useTransactionForm() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [currentUserId, setCurrentUserId] = useState<string | null>(() =>
-    localStorage.getItem(CURRENT_USER_KEY)
-  );
+  // ログイン中のユーザー = 「自分」。ログイン時にclient.tsが保存する。
+  const currentUserId = getCurrentUserId();
 
   const [expenseType, setExpenseType] = useState<ExpenseType>('variable_expense');
   const [categoryId, setCategoryId] = useState<string>('');
@@ -46,10 +43,6 @@ export function useTransactionForm() {
         if (cancelled) return;
         setUsers(userList);
         setCategories([...fixedCats, ...variableCats].filter((c) => c.isActive));
-        setCurrentUserId((prev) => {
-          if (prev && userList.some((u) => u.id === prev)) return prev;
-          return userList[0]?.id ?? null;
-        });
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
@@ -75,11 +68,6 @@ export function useTransactionForm() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expenseType, categories]);
-
-  const selectCurrentUser = useCallback((userId: string) => {
-    setCurrentUserId(userId);
-    localStorage.setItem(CURRENT_USER_KEY, userId);
-  }, []);
 
   const otherUser = users.find((u) => u.id !== currentUserId) ?? null;
 
@@ -109,7 +97,7 @@ export function useTransactionForm() {
       const splitType = target === 'shared' ? 'shared' : 'self';
       const userId =
         target === 'shared' ? null : target === 'self' ? currentUserId : otherUser?.id ?? currentUserId;
-      await transactionsApi.createTransaction(currentUserId, {
+      await transactionsApi.createTransaction({
         transactionDate,
         categoryId,
         splitType,
@@ -130,7 +118,6 @@ export function useTransactionForm() {
     users,
     currentUserId,
     otherUser,
-    selectCurrentUser,
     categoriesForType,
     loading,
     saving,

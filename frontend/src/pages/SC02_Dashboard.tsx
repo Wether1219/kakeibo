@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BalanceSummaryCard } from '../components/BalanceSummaryCard';
 import { ExpensePieCharts } from '../components/ExpensePieCharts';
 import { MonthSelector } from '../components/MonthSelector';
@@ -7,11 +8,9 @@ import { WeeklyBudgetProgress } from '../components/WeeklyBudgetProgress';
 import { useDashboard } from '../hooks/useDashboard';
 import { useYearMonthParams } from '../hooks/useYearMonthParams';
 
-// useTransactionForm.tsと同じキー（「自分」ユーザーの暫定選択。JWT認証実装時に置き換え）。
-const CURRENT_USER_KEY = 'kakeibo_current_user_id';
-
 export function SC02_Dashboard() {
   const { year, month, setYearMonth } = useYearMonthParams();
+  const navigate = useNavigate();
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { summary, weeklyBudgets, recentTransactions, categories, users, loading, error, removeTransaction } =
@@ -22,14 +21,9 @@ export function SC02_Dashboard() {
   };
 
   const handleDeleteTransaction = async (id: string) => {
-    const userId = localStorage.getItem(CURRENT_USER_KEY) ?? users[0]?.id;
-    if (!userId) {
-      setDeleteError('ユーザーが見つかりません');
-      return;
-    }
     setDeleteError(null);
     try {
-      await removeTransaction(id, userId);
+      await removeTransaction(id);
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : String(e));
     }
@@ -72,6 +66,7 @@ export function SC02_Dashboard() {
             categories={categories}
             users={users}
             onDelete={handleDeleteTransaction}
+            onShowMore={() => navigate(`/transactions?year=${year}&month=${month}`)}
           />
         </>
       )}

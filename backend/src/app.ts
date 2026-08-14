@@ -1,4 +1,5 @@
 import express from 'express';
+import { authRouter } from './routes/auth';
 import { categoriesRouter } from './routes/categories';
 import { transactionsRouter } from './routes/transactions';
 import { incomesRouter } from './routes/incomes';
@@ -14,6 +15,7 @@ import { assetBalancesRouter } from './routes/assetBalances';
 export function createApp() {
   const app = express();
   app.use(express.json());
+  app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/categories', categoriesRouter);
   app.use('/api/v1/transactions', transactionsRouter);
   app.use('/api/v1/incomes', incomesRouter);

@@ -3,6 +3,7 @@ import request from 'supertest';
 import * as XLSX from 'xlsx';
 import { createApp } from '../src/app';
 import { prisma } from '../src/prisma';
+import { authHeader } from './helpers/auth';
 
 const TEST_HOUSEHOLD_ID = 999964n;
 const USER_A = 999963n; // たいよう
@@ -24,8 +25,8 @@ beforeAll(async () => {
   await prisma.household.create({ data: { id: TEST_HOUSEHOLD_ID } });
   await prisma.user.createMany({
     data: [
-      { id: USER_A, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう' },
-      { id: USER_B, householdId: TEST_HOUSEHOLD_ID, displayName: 'みらの' },
+      { id: USER_A, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう', email: `user${USER_A}@test.local`, passwordHash: 'test-hash' },
+      { id: USER_B, householdId: TEST_HOUSEHOLD_ID, displayName: 'みらの', email: `user${USER_B}@test.local`, passwordHash: 'test-hash' },
     ],
   });
 
@@ -103,7 +104,7 @@ afterAll(async () => {
 });
 
 describe('GET /api/v1/export', () => {
-  it('x-household-idヘッダーがない場合は401', async () => {
+  it('Authorizationヘッダーがない場合は401', async () => {
     const res = await request(app).get('/api/v1/export?format=csv');
     expect(res.status).toBe(401);
   });
@@ -111,14 +112,14 @@ describe('GET /api/v1/export', () => {
   it('formatが不正な場合は400', async () => {
     const res = await request(app)
       .get('/api/v1/export?format=pdf')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(400);
   });
 
   it('format=csvで取引一覧をCSV出力できる', async () => {
     const res = await request(app)
       .get('/api/v1/export?format=csv')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('text/csv');
     const body = res.text.replace(/^﻿/, '');
@@ -132,7 +133,7 @@ describe('GET /api/v1/export', () => {
     // 生のバイト列をBufferとして受け取るカスタムパーサーを明示的に指定する
     const res = await request(app)
       .get('/api/v1/export?format=xlsx')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
       .buffer(true)
       .parse((response, callback) => {
         const chunks: Buffer[] = [];
@@ -166,7 +167,7 @@ describe('GET /api/v1/export', () => {
 
     const res = await request(app)
       .get('/api/v1/export?format=csv')
-      .set('x-household-id', otherHouseholdId.toString());
+      .set('Authorization', authHeader(otherHouseholdId, USER_A));
     expect(res.status).toBe(200);
     const body = res.text.replace(/^﻿/, '');
     const lines = body.trim().split('\r\n');

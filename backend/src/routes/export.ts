@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { HouseholdRequest, householdMiddleware } from '../middlewares/household';
+import { HouseholdRequest, authMiddleware } from '../middlewares/household';
 import { exportHouseholdXlsx, exportTransactionsCsv } from '../services/exportService';
 
 export const exportRouter = Router();
-exportRouter.use(householdMiddleware);
+exportRouter.use(authMiddleware);
 
 exportRouter.get('/', async (req: HouseholdRequest, res) => {
   const { format } = req.query;

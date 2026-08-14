@@ -1,7 +1,4 @@
-const API_BASE = '/api/v1';
-
-// 認証実装までの暫定措置。フェーズ0でJWTベースのAPIクライアントに置き換える。
-const TEMP_HOUSEHOLD_ID = '1';
+import { apiFetch } from './client';
 
 export type SplitType = 'self' | 'shared';
 
@@ -28,17 +25,6 @@ export interface TransactionInput {
   memo?: string | null;
 }
 
-function headers(userId?: string) {
-  const h: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'x-household-id': TEMP_HOUSEHOLD_ID,
-  };
-  if (userId) {
-    h['x-user-id'] = userId;
-  }
-  return h;
-}
-
 export interface TransactionListParams {
   year?: number;
   month?: number;
@@ -55,20 +41,14 @@ export async function fetchTransactions(params: TransactionListParams = {}): Pro
   if (params.limit !== undefined) query.set('limit', String(params.limit));
   if (params.sort !== undefined) query.set('sort', params.sort);
   const qs = query.toString();
-  const res = await fetch(`${API_BASE}/transactions${qs ? `?${qs}` : ''}`, {
-    headers: headers(),
-  });
+  const res = await apiFetch(`/transactions${qs ? `?${qs}` : ''}`);
   if (!res.ok) throw new Error('取引一覧の取得に失敗しました');
   return res.json();
 }
 
-export async function createTransaction(
-  userId: string,
-  data: TransactionInput
-): Promise<Transaction> {
-  const res = await fetch(`${API_BASE}/transactions`, {
+export async function createTransaction(data: TransactionInput): Promise<Transaction> {
+  const res = await apiFetch('/transactions', {
     method: 'POST',
-    headers: headers(userId),
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -78,11 +58,20 @@ export async function createTransaction(
   return res.json();
 }
 
-export async function deleteTransaction(id: string, userId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/transactions/${id}`, {
-    method: 'DELETE',
-    headers: headers(userId),
+export async function updateTransaction(id: string, data: TransactionInput): Promise<Transaction> {
+  const res = await apiFetch(`/transactions/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
   });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? '取引の更新に失敗しました');
+  }
+  return res.json();
+}
+
+export async function deleteTransaction(id: string): Promise<void> {
+  const res = await apiFetch(`/transactions/${id}`, { method: 'DELETE' });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.error ?? '取引の削除に失敗しました');

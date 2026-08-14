@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { prisma } from '../src/prisma';
+import { authHeader } from './helpers/auth';
 
 const TEST_HOUSEHOLD_ID = 999993n;
 const OTHER_HOUSEHOLD_ID = 999992n;
@@ -28,8 +29,8 @@ beforeAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: [USER_ID, OTHER_USER_ID] } } });
   await prisma.user.createMany({
     data: [
-      { id: USER_ID, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう' },
-      { id: OTHER_USER_ID, householdId: OTHER_HOUSEHOLD_ID, displayName: 'みらの' },
+      { id: USER_ID, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう', email: `user${USER_ID}@test.local`, passwordHash: 'test-hash' },
+      { id: OTHER_USER_ID, householdId: OTHER_HOUSEHOLD_ID, displayName: 'みらの', email: `user${OTHER_USER_ID}@test.local`, passwordHash: 'test-hash' },
     ],
   });
   const incomeCategory = await prisma.category.create({
@@ -70,7 +71,7 @@ function baseItem(overrides: Record<string, unknown> = {}) {
 }
 
 describe('/api/v1/incomes', () => {
-  it('x-household-idヘッダーがない場合は401', async () => {
+  it('Authorizationヘッダーがない場合は401', async () => {
     const res = await request(app).get('/api/v1/incomes');
     expect(res.status).toBe(401);
   });
@@ -78,8 +79,7 @@ describe('/api/v1/incomes', () => {
   it('一括登録して一覧取得できる', async () => {
     const putRes = await request(app)
       .put('/api/v1/incomes/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send([baseItem()]);
     expect(putRes.status).toBe(200);
     expect(putRes.body).toHaveLength(1);
@@ -93,7 +93,7 @@ describe('/api/v1/incomes', () => {
 
     const listRes = await request(app)
       .get(`/api/v1/incomes?year=${currentYear}&month=5`)
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(listRes.status).toBe(200);
     expect(listRes.body).toHaveLength(1);
     expect(listRes.body[0].amount).toBe(300000);
@@ -102,13 +102,11 @@ describe('/api/v1/incomes', () => {
   it('同一年月・人・費目で再送すると更新される（新規作成されない）', async () => {
     await request(app)
       .put('/api/v1/incomes/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send([baseItem({ amount: 100000 })]);
     const putRes = await request(app)
       .put('/api/v1/incomes/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send([baseItem({ amount: 250000 })]);
     expect(putRes.status).toBe(200);
     expect(putRes.body).toHaveLength(1);
@@ -116,15 +114,14 @@ describe('/api/v1/incomes', () => {
 
     const listRes = await request(app)
       .get('/api/v1/incomes')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(listRes.body).toHaveLength(1);
   });
 
   it('type=income以外の費目は400', async () => {
     const res = await request(app)
       .put('/api/v1/incomes/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send([baseItem({ categoryId: expenseCategoryId })]);
     expect(res.status).toBe(400);
   });
@@ -132,8 +129,7 @@ describe('/api/v1/incomes', () => {
   it('monthが範囲外は400', async () => {
     const res = await request(app)
       .put('/api/v1/incomes/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send([baseItem({ month: 13 })]);
     expect(res.status).toBe(400);
   });
@@ -144,8 +140,7 @@ describe('/api/v1/incomes', () => {
     });
     const res = await request(app)
       .put('/api/v1/incomes/bulk')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
-      .set('x-user-id', USER_ID.toString())
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send([baseItem({ categoryId: otherCategory.id.toString() })]);
     expect(res.status).toBe(400);
     await prisma.category.delete({ where: { id: otherCategory.id } });
@@ -154,8 +149,7 @@ describe('/api/v1/incomes', () => {
   it('他世帯のデータは一覧に表示されない', async () => {
     await request(app)
       .put('/api/v1/incomes/bulk')
-      .set('x-household-id', OTHER_HOUSEHOLD_ID.toString())
-      .set('x-user-id', OTHER_USER_ID.toString())
+      .set('Authorization', authHeader(OTHER_HOUSEHOLD_ID, OTHER_USER_ID))
       .send([
         baseItem({
           userId: OTHER_USER_ID.toString(),
@@ -169,7 +163,7 @@ describe('/api/v1/incomes', () => {
 
     const listRes = await request(app)
       .get('/api/v1/incomes')
-      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(listRes.body).toHaveLength(0);
 
     await prisma.income.deleteMany({ where: { householdId: OTHER_HOUSEHOLD_ID } });

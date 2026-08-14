@@ -13,7 +13,7 @@ export interface DashboardData {
   users: User[];
   loading: boolean;
   error: string | null;
-  removeTransaction: (id: string, userId: string) => Promise<void>;
+  removeTransaction: (id: string) => Promise<void>;
 }
 
 export function useDashboard(year: number, month: number): DashboardData {
@@ -58,8 +58,8 @@ export function useDashboard(year: number, month: number): DashboardData {
     };
   }, [year, month, reloadToken]);
 
-  const removeTransaction = useCallback(async (id: string, userId: string) => {
-    await deleteTransaction(id, userId);
+  const removeTransaction = useCallback(async (id: string) => {
+    await deleteTransaction(id);
     setReloadToken((t) => t + 1);
   }, []);
 
