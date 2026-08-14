@@ -22,8 +22,10 @@ export interface MonthlySummaryMember {
 }
 
 export interface MonthlySummaryCategoryRow {
-  category: string;
-  [displayName: string]: string | number;
+  categoryId: string;
+  icon: string | null;
+  name: string;
+  amounts: Record<string, number>;
 }
 
 export interface MonthlySummary {
@@ -117,11 +119,9 @@ export async function getMonthlySummary(
       .filter((c) => c.type === type)
       .map((category) => {
         const categoryTransactions = transactions.filter((t) => t.categoryId === category.id);
-        const row: MonthlySummaryCategoryRow = {
-          category: `${category.icon ?? ''}${category.name}`,
-        };
+        const amounts: Record<string, number> = {};
         for (const user of users) {
-          row[user.displayName] = categoryTransactions.reduce(
+          amounts[user.id.toString()] = categoryTransactions.reduce(
             (sum, t) =>
               sum +
               apportionTransactionAmount(
@@ -131,7 +131,12 @@ export async function getMonthlySummary(
             0
           );
         }
-        return row;
+        return {
+          categoryId: category.id.toString(),
+          icon: category.icon,
+          name: category.name,
+          amounts,
+        };
       });
   }
 
@@ -142,4 +147,85 @@ export async function getMonthlySummary(
     fixedExpenseByCategory: categoryBreakdown('fixed_expense'),
     variableExpenseByCategory: categoryBreakdown('variable_expense'),
   };
+}
+
+export interface AnnualSummaryRow {
+  categoryType: 'income' | 'pre_saving' | 'fixed_expense' | 'variable_expense';
+  categoryName: string;
+  userId: string;
+  displayName: string;
+  months: number[];
+  annualTotal: number;
+}
+
+export interface AnnualSummary {
+  year: number;
+  rows: AnnualSummaryRow[];
+}
+
+export async function getAnnualSummary(householdId: bigint, year: number): Promise<AnnualSummary> {
+  if (!Number.isInteger(year)) {
+    throw new SummaryValidationError('yearが不正です');
+  }
+  const yearStart = new Date(Date.UTC(year, 0, 1));
+  const yearEnd = new Date(Date.UTC(year + 1, 0, 1));
+
+  const [users, categories, incomes, preSavings, transactions] = await Promise.all([
+    prisma.user.findMany({ where: { householdId }, orderBy: { id: 'asc' } }),
+    prisma.category.findMany({
+      where: { householdId, isActive: true },
+      orderBy: { sortOrder: 'asc' },
+    }),
+    prisma.income.findMany({ where: { householdId, year } }),
+    prisma.preSaving.findMany({ where: { householdId, year } }),
+    prisma.transaction.findMany({
+      where: {
+        householdId,
+        transactionDate: { gte: yearStart, lt: yearEnd },
+        category: { type: { in: ['fixed_expense', 'variable_expense'] } },
+      },
+    }),
+  ]);
+
+  const rows: AnnualSummaryRow[] = [];
+
+  for (const category of categories) {
+    for (const user of users) {
+      const months = new Array(12).fill(0);
+
+      if (category.type === 'income') {
+        for (const income of incomes) {
+          if (income.categoryId === category.id && income.userId === user.id) {
+            months[income.month - 1] += Number(income.amount);
+          }
+        }
+      } else if (category.type === 'pre_saving') {
+        for (const preSaving of preSavings) {
+          if (preSaving.categoryId === category.id && preSaving.userId === user.id) {
+            months[preSaving.month - 1] += Number(preSaving.actualAmount);
+          }
+        }
+      } else {
+        for (const t of transactions) {
+          if (t.categoryId !== category.id) continue;
+          const monthIndex = t.transactionDate.getUTCMonth();
+          months[monthIndex] += apportionTransactionAmount(
+            { splitType: t.splitType, userId: t.userId, createdBy: t.createdBy, amount: Number(t.amount) },
+            user.id
+          );
+        }
+      }
+
+      rows.push({
+        categoryType: category.type,
+        categoryName: `${category.icon ?? ''}${category.name}`,
+        userId: user.id.toString(),
+        displayName: user.displayName,
+        months,
+        annualTotal: months.reduce((sum, m) => sum + m, 0),
+      });
+    }
+  }
+
+  return { year, rows };
 }

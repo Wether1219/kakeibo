@@ -30,9 +30,11 @@ function validateInput(data: TransactionInput) {
   }
 }
 
+export type TransactionSort = 'date_desc';
+
 export async function listTransactions(
   householdId: bigint,
-  filter: { year?: number; month?: number; categoryId?: bigint }
+  filter: { year?: number; month?: number; categoryId?: bigint; limit?: number; sort?: TransactionSort }
 ) {
   const where: Prisma.TransactionWhereInput = { householdId };
   if (filter.year !== undefined) {
@@ -50,6 +52,7 @@ export async function listTransactions(
   return prisma.transaction.findMany({
     where,
     orderBy: { transactionDate: 'desc' },
+    take: filter.limit,
   });
 }
 

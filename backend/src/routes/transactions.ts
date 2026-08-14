@@ -81,7 +81,7 @@ export const transactionsRouter = Router();
 transactionsRouter.use(householdMiddleware);
 
 transactionsRouter.get('/', async (req: HouseholdRequest, res) => {
-  const { year, month, categoryId } = req.query;
+  const { year, month, categoryId, limit, sort } = req.query;
   if (year !== undefined && !/^\d+$/.test(String(year))) {
     res.status(400).json({ error: 'yearが不正です' });
     return;
@@ -94,10 +94,20 @@ transactionsRouter.get('/', async (req: HouseholdRequest, res) => {
     res.status(400).json({ error: 'categoryIdが不正です' });
     return;
   }
+  if (limit !== undefined && !/^[1-9]\d*$/.test(String(limit))) {
+    res.status(400).json({ error: 'limitが不正です' });
+    return;
+  }
+  if (sort !== undefined && sort !== 'date_desc') {
+    res.status(400).json({ error: 'sortが不正です' });
+    return;
+  }
   const transactions = await listTransactions(req.householdId!, {
     year: year !== undefined ? Number(year) : undefined,
     month: month !== undefined ? Number(month) : undefined,
     categoryId: categoryId !== undefined ? BigInt(String(categoryId)) : undefined,
+    limit: limit !== undefined ? Number(limit) : undefined,
+    sort: sort as 'date_desc' | undefined,
   });
   res.json(transactions.map(serializeTransaction));
 });

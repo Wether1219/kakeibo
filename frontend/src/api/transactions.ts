@@ -28,12 +28,38 @@ export interface TransactionInput {
   memo?: string | null;
 }
 
-function headers(userId: string) {
-  return {
+function headers(userId?: string) {
+  const h: Record<string, string> = {
     'Content-Type': 'application/json',
     'x-household-id': TEMP_HOUSEHOLD_ID,
-    'x-user-id': userId,
   };
+  if (userId) {
+    h['x-user-id'] = userId;
+  }
+  return h;
+}
+
+export interface TransactionListParams {
+  year?: number;
+  month?: number;
+  categoryId?: string;
+  limit?: number;
+  sort?: 'date_desc';
+}
+
+export async function fetchTransactions(params: TransactionListParams = {}): Promise<Transaction[]> {
+  const query = new URLSearchParams();
+  if (params.year !== undefined) query.set('year', String(params.year));
+  if (params.month !== undefined) query.set('month', String(params.month));
+  if (params.categoryId !== undefined) query.set('categoryId', params.categoryId);
+  if (params.limit !== undefined) query.set('limit', String(params.limit));
+  if (params.sort !== undefined) query.set('sort', params.sort);
+  const qs = query.toString();
+  const res = await fetch(`${API_BASE}/transactions${qs ? `?${qs}` : ''}`, {
+    headers: headers(),
+  });
+  if (!res.ok) throw new Error('取引一覧の取得に失敗しました');
+  return res.json();
 }
 
 export async function createTransaction(
