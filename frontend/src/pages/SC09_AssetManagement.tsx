@@ -101,7 +101,7 @@ export function SC09_AssetManagement() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6">
+    <div className="max-w-[1600px] mx-auto p-4 space-y-6">
       <YearSelector year={year} onChange={setYear} />
 
       <AssetGroupTab value={group} onChange={setGroup} />
