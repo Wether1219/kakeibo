@@ -8,8 +8,10 @@ const EXPENSE_RATIO_TARGET = 60;
 const SAVING_RATIO_TARGET = 40;
 
 function ratioBadgeClass(hasIncome: boolean, isGood: boolean): string {
-  if (!hasIncome) return 'bg-gray-100 text-gray-500';
-  return isGood ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+  if (!hasIncome) return 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400';
+  return isGood
+    ? 'bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-400'
+    : 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400';
 }
 
 function formatRatio(hasIncome: boolean, ratio: number): string {
@@ -19,15 +21,15 @@ function formatRatio(hasIncome: boolean, ratio: number): string {
 export function KpiCards({ members }: Props) {
   return (
     <section className="space-y-2">
-      <h2 className="text-sm font-bold text-gray-600">KPIカード</h2>
+      <h2 className="text-sm font-bold text-gray-600 dark:text-gray-400">KPIカード</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {members.map((m) => {
           const hasIncome = m.annual.income !== 0;
           const expenseIsGood = m.expenseRatio <= EXPENSE_RATIO_TARGET;
           const savingIsGood = m.savingRatio >= SAVING_RATIO_TARGET;
           return (
-            <div key={m.userId} className="rounded border border-gray-200 bg-white p-4 shadow-sm space-y-3">
-              <h3 className="text-sm font-bold text-gray-500">{m.displayName}</h3>
+            <div key={m.userId} className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm space-y-3">
+              <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400">{m.displayName}</h3>
               <div className={`rounded px-3 py-2 ${ratioBadgeClass(hasIncome, expenseIsGood)}`}>
                 <div className="text-xs">支出率</div>
                 <div className="text-lg font-bold">{formatRatio(hasIncome, m.expenseRatio)}</div>
@@ -40,7 +42,7 @@ export function KpiCards({ members }: Props) {
           );
         })}
       </div>
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-gray-400 dark:text-gray-500">
         目標: 支出率{EXPENSE_RATIO_TARGET}%以下 / 貯蓄率{SAVING_RATIO_TARGET}%以上
       </p>
     </section>

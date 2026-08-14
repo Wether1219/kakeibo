@@ -8,7 +8,7 @@ interface Props {
 export function AnnualBalanceSection({ members }: Props) {
   return (
     <section className="space-y-2">
-      <h2 className="text-sm font-bold text-gray-600">年間の収支（臨時含む）</h2>
+      <h2 className="text-sm font-bold text-gray-600 dark:text-gray-400">年間の収支（臨時含む）</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {members.map((m) => (
           <BalanceSummaryCard

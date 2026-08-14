@@ -8,7 +8,7 @@ export function YearSelector({ year, onChange }: Props) {
     <div className="flex items-center justify-center gap-4">
       <button
         type="button"
-        className="px-3 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+        className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
         onClick={() => onChange(year - 1)}
         aria-label="前年"
       >
@@ -17,7 +17,7 @@ export function YearSelector({ year, onChange }: Props) {
       <span className="text-lg font-bold min-w-[6rem] text-center">{year}年</span>
       <button
         type="button"
-        className="px-3 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+        className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
         onClick={() => onChange(year + 1)}
         aria-label="翌年"
       >

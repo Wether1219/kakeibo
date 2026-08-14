@@ -64,7 +64,7 @@ export function SC04_TransactionList() {
 
       <div className="flex flex-col sm:flex-row gap-2">
         <select
-          className="border border-gray-300 rounded px-2 py-1.5 text-sm flex-1"
+          className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1.5 text-sm flex-1"
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
         >
@@ -78,21 +78,21 @@ export function SC04_TransactionList() {
         <input
           type="text"
           placeholder="費目名・メモで検索"
-          className="border border-gray-300 rounded px-2 py-1.5 text-sm flex-1"
+          className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1.5 text-sm flex-1"
           value={keywordInput}
           onChange={(e) => setKeywordInput(e.target.value)}
         />
       </div>
 
-      {loading && <p className="text-sm text-gray-400">読み込み中...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {actionError && <p className="text-sm text-red-600 dark:text-red-400">{actionError}</p>}
 
       {!loading && (
         <>
-          <div className="rounded border border-gray-200 bg-white divide-y divide-gray-100">
+          <div className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
             {transactions.length === 0 && (
-              <p className="px-4 py-4 text-sm text-gray-400">取引がありません</p>
+              <p className="px-4 py-4 text-sm text-gray-400 dark:text-gray-500">取引がありません</p>
             )}
             {transactions.map((t) => {
               const category = categoryMap.get(t.categoryId);
@@ -100,17 +100,17 @@ export function SC04_TransactionList() {
                 t.splitType === 'shared' ? '共通' : userMap.get(t.userId ?? '')?.displayName ?? '-';
               return (
                 <div key={t.id} className="flex items-center gap-3 px-4 py-2 text-sm">
-                  <span className="text-gray-400 w-10 shrink-0">{formatDate(t.transactionDate)}</span>
+                  <span className="text-gray-400 dark:text-gray-500 w-10 shrink-0">{formatDate(t.transactionDate)}</span>
                   <span className="w-28 shrink-0 truncate">
                     {category?.icon ?? ''}
                     {category?.name ?? ''}
                   </span>
-                  <span className="w-16 shrink-0 text-gray-500">{targetName}</span>
+                  <span className="w-16 shrink-0 text-gray-500 dark:text-gray-400">{targetName}</span>
                   <span className="w-20 shrink-0 text-right font-medium">{formatYen(t.amount)}</span>
-                  <span className="flex-1 truncate text-gray-500">{t.memo}</span>
+                  <span className="flex-1 truncate text-gray-500 dark:text-gray-400">{t.memo}</span>
                   <button
                     type="button"
-                    className="shrink-0 text-blue-600 hover:underline"
+                    className="shrink-0 text-blue-600 dark:text-blue-400 hover:underline"
                     onClick={() => setEditing(t)}
                   >
                     編集
@@ -118,7 +118,7 @@ export function SC04_TransactionList() {
                   <button
                     type="button"
                     aria-label="削除"
-                    className="shrink-0 text-gray-400 hover:text-red-600"
+                    className="shrink-0 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400"
                     onClick={() => handleDelete(t)}
                   >
                     削除
@@ -129,7 +129,7 @@ export function SC04_TransactionList() {
           </div>
 
           {total > 0 && (
-            <div className="flex items-center justify-between text-sm text-gray-500">
+            <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
               <span>
                 {rangeStart}-{rangeEnd} / 全{total}件
               </span>
@@ -138,7 +138,7 @@ export function SC04_TransactionList() {
                   type="button"
                   disabled={page === 0}
                   onClick={() => setPage((p) => p - 1)}
-                  className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40"
+                  className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-40"
                 >
                   前へ
                 </button>
@@ -146,7 +146,7 @@ export function SC04_TransactionList() {
                   type="button"
                   disabled={page >= totalPages - 1}
                   onClick={() => setPage((p) => p + 1)}
-                  className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40"
+                  className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-40"
                 >
                   次へ
                 </button>

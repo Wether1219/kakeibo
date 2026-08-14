@@ -29,7 +29,7 @@ export function IconPicker({ value, onChange }: Props) {
     <div className="relative inline-block">
       <button
         type="button"
-        className="w-10 h-8 border border-gray-300 rounded text-center hover:bg-gray-50"
+        className="w-10 h-8 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded text-center hover:bg-gray-50 dark:hover:bg-gray-700"
         onClick={() => setOpen((o) => !o)}
         aria-label="アイコンを選択"
       >
@@ -39,14 +39,14 @@ export function IconPicker({ value, onChange }: Props) {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute z-20 mt-1 w-60 bg-white border border-gray-200 rounded shadow-lg p-2">
+          <div className="absolute z-20 mt-1 w-60 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg p-2">
             <div className="grid grid-cols-7 gap-1 max-h-40 overflow-y-auto">
               {CATEGORY_ICON_OPTIONS.map((icon) => (
                 <button
                   key={icon}
                   type="button"
-                  className={`text-lg rounded py-1 hover:bg-gray-100 ${
-                    value === icon ? 'bg-blue-50 ring-1 ring-blue-400' : ''
+                  className={`text-lg rounded py-1 hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                    value === icon ? 'bg-blue-50 dark:bg-blue-950 ring-1 ring-blue-400' : ''
                   }`}
                   onClick={() => select(icon)}
                 >
@@ -54,9 +54,9 @@ export function IconPicker({ value, onChange }: Props) {
                 </button>
               ))}
             </div>
-            <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-1">
+            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex items-center gap-1">
               <input
-                className="w-16 border border-gray-300 rounded px-1 py-0.5 text-center text-sm"
+                className="w-16 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-1 py-0.5 text-center text-sm"
                 placeholder="自由入力"
                 value={custom}
                 maxLength={4}
@@ -70,7 +70,7 @@ export function IconPicker({ value, onChange }: Props) {
               />
               <button
                 type="button"
-                className="text-xs text-blue-600 hover:underline px-1"
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline px-1"
                 onClick={submitCustom}
               >
                 決定

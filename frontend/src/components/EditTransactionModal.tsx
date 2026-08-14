@@ -103,13 +103,13 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded shadow-lg w-full max-w-sm p-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded shadow-lg w-full max-w-sm p-4 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-bold mb-4">取引を編集</h2>
-        {loading && <p className="text-sm text-gray-400">読み込み中...</p>}
+        {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
         {!loading && (
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">区分</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">区分</label>
               <div className="grid grid-cols-2 gap-2">
                 {(Object.keys(EXPENSE_TYPE_LABELS) as ExpenseType[]).map((type) => (
                   <button
@@ -118,8 +118,8 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
                     onClick={() => setExpenseType(type)}
                     className={`py-2 rounded border text-sm font-bold ${
                       expenseType === type
-                        ? 'border-blue-600 bg-blue-50 text-blue-600'
-                        : 'border-gray-300 text-gray-500'
+                        ? 'border-blue-600 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400'
+                        : 'border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400'
                     }`}
                   >
                     {EXPENSE_TYPE_LABELS[type]}
@@ -129,9 +129,9 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">費目</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">費目</label>
               <select
-                className="w-full border border-gray-300 rounded px-2 py-2 text-base"
+                className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-2 text-base"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
               >
@@ -145,7 +145,7 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">対象者</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">対象者</label>
               <div className="grid grid-cols-3 gap-2">
                 {users.map((u) => (
                   <button
@@ -154,8 +154,8 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
                     onClick={() => setTargetKey(u.id)}
                     className={`py-2 rounded border text-sm font-bold ${
                       targetKey === u.id
-                        ? 'border-blue-600 bg-blue-50 text-blue-600'
-                        : 'border-gray-300 text-gray-500'
+                        ? 'border-blue-600 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400'
+                        : 'border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400'
                     }`}
                   >
                     {u.displayName}
@@ -166,8 +166,8 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
                   onClick={() => setTargetKey('shared')}
                   className={`py-2 rounded border text-sm font-bold ${
                     targetKey === 'shared'
-                      ? 'border-blue-600 bg-blue-50 text-blue-600'
-                      : 'border-gray-300 text-gray-500'
+                      ? 'border-blue-600 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400'
+                      : 'border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400'
                   }`}
                 >
                   両方
@@ -176,44 +176,44 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">金額</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">金額</label>
               <input
                 type="number"
                 inputMode="numeric"
                 min={1}
                 step={1}
-                className="w-full border border-gray-300 rounded px-2 py-2 text-xl text-right"
+                className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-2 text-xl text-right"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">日付</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">日付</label>
               <input
                 type="date"
-                className="w-full border border-gray-300 rounded px-2 py-1"
+                className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
                 value={transactionDate}
                 onChange={(e) => setTransactionDate(e.target.value)}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">メモ</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">メモ</label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded px-2 py-1"
+                className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
               />
             </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
-                className="px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+                className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                 onClick={onClose}
               >
                 キャンセル

@@ -25,7 +25,7 @@ export function MonthSelector({ year, month, onChange }: Props) {
     <div className="flex items-center justify-center gap-4">
       <button
         type="button"
-        className="px-3 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+        className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
         onClick={handlePrev}
         aria-label="前月"
       >
@@ -36,7 +36,7 @@ export function MonthSelector({ year, month, onChange }: Props) {
       </span>
       <button
         type="button"
-        className="px-3 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+        className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
         onClick={handleNext}
         aria-label="翌月"
       >

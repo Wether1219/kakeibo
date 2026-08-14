@@ -47,9 +47,9 @@ export function CategoryMaster() {
 
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 mb-6 items-end">
         <div>
-          <label className="block text-xs text-gray-500">区分</label>
+          <label className="block text-xs text-gray-500 dark:text-gray-400">区分</label>
           <select
-            className="border border-gray-300 rounded px-2 py-1"
+            className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
             value={newType}
             onChange={(e) => setNewType(e.target.value as CategoryType)}
           >
@@ -61,13 +61,13 @@ export function CategoryMaster() {
           </select>
         </div>
         <div>
-          <label className="block text-xs text-gray-500">アイコン</label>
+          <label className="block text-xs text-gray-500 dark:text-gray-400">アイコン</label>
           <IconPicker value={newIcon} onChange={setNewIcon} />
         </div>
         <div className="flex-1 min-w-[8rem]">
-          <label className="block text-xs text-gray-500">費目名</label>
+          <label className="block text-xs text-gray-500 dark:text-gray-400">費目名</label>
           <input
-            className="w-full border border-gray-300 rounded px-2 py-1"
+            className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="例：食費"
@@ -80,10 +80,10 @@ export function CategoryMaster() {
           追加
         </button>
       </form>
-      {formError && <p className="text-sm text-red-600 mb-4">{formError}</p>}
+      {formError && <p className="text-sm text-red-600 dark:text-red-400 mb-4">{formError}</p>}
 
-      {loading && <p className="text-sm text-gray-400">読み込み中...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {!loading &&
         !error &&

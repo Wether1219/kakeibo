@@ -72,22 +72,22 @@ export function MonthlySavingsSummary({ rows }: Props) {
   const sumArray = (values: number[]) => values.reduce((sum, v) => sum + v, 0);
 
   return (
-    <div className="overflow-x-auto border border-gray-200 rounded">
+    <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded">
       <table className="min-w-full text-sm border-collapse">
         <thead>
-          <tr className="bg-gray-50">
-            <th className="sticky left-0 bg-gray-50 z-10 px-3 py-2 text-left font-medium text-gray-500 border-b border-gray-200 whitespace-nowrap">
+          <tr className="bg-gray-50 dark:bg-gray-800">
+            <th className="sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap">
               貯金合計
             </th>
             {MONTH_LABELS.map((label) => (
               <th
                 key={label}
-                className="px-3 py-2 text-right font-medium text-gray-500 border-b border-gray-200 whitespace-nowrap"
+                className="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap"
               >
                 {label}
               </th>
             ))}
-            <th className="px-3 py-2 text-right font-medium text-gray-500 border-b border-gray-200 whitespace-nowrap">
+            <th className="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap">
               年間合計
             </th>
           </tr>
@@ -95,14 +95,14 @@ export function MonthlySavingsSummary({ rows }: Props) {
         <tbody>
           {userMonths.map((u) => (
             <Fragment key={u.userId}>
-              <tr className="border-b border-gray-100">
-                <td className="sticky left-0 bg-white z-10 px-3 py-2 whitespace-nowrap">
+              <tr className="border-b border-gray-100 dark:border-gray-700">
+                <td className="sticky left-0 bg-white dark:bg-gray-800 z-10 px-3 py-2 whitespace-nowrap">
                   {u.displayName}
                 </td>
                 {u.months.map((amount, i) => (
                   <td
                     key={i}
-                    className={`px-3 py-2 text-right whitespace-nowrap ${amount < 0 ? 'text-red-600' : ''}`}
+                    className={`px-3 py-2 text-right whitespace-nowrap ${amount < 0 ? 'text-red-600 dark:text-red-400' : ''}`}
                   >
                     {formatYen(amount)}
                   </td>
@@ -111,14 +111,14 @@ export function MonthlySavingsSummary({ rows }: Props) {
                   {formatYen(sumArray(u.months))}
                 </td>
               </tr>
-              <tr className="border-b border-gray-100 text-gray-500 text-xs">
-                <td className="sticky left-0 bg-white z-10 px-3 py-1 pl-6 whitespace-nowrap">
+              <tr className="border-b border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs">
+                <td className="sticky left-0 bg-white dark:bg-gray-800 z-10 px-3 py-1 pl-6 whitespace-nowrap">
                   貯蓄率
                 </td>
                 {u.ratio.map((ratio, i) => (
                   <td
                     key={i}
-                    className={`px-3 py-1 text-right whitespace-nowrap ${ratio < 0 ? 'text-red-600' : ''}`}
+                    className={`px-3 py-1 text-right whitespace-nowrap ${ratio < 0 ? 'text-red-600 dark:text-red-400' : ''}`}
                   >
                     {formatPercent(ratio)}
                   </td>
@@ -129,12 +129,12 @@ export function MonthlySavingsSummary({ rows }: Props) {
               </tr>
             </Fragment>
           ))}
-          <tr className="bg-gray-50 font-bold">
-            <td className="sticky left-0 bg-gray-50 z-10 px-3 py-2 whitespace-nowrap">合計</td>
+          <tr className="bg-gray-50 dark:bg-gray-800 font-bold">
+            <td className="sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 px-3 py-2 whitespace-nowrap">合計</td>
             {totalMonths.map((amount, i) => (
               <td
                 key={i}
-                className={`px-3 py-2 text-right whitespace-nowrap ${amount < 0 ? 'text-red-600' : ''}`}
+                className={`px-3 py-2 text-right whitespace-nowrap ${amount < 0 ? 'text-red-600 dark:text-red-400' : ''}`}
               >
                 {formatYen(amount)}
               </td>
@@ -143,14 +143,14 @@ export function MonthlySavingsSummary({ rows }: Props) {
               {formatYen(sumArray(totalMonths))}
             </td>
           </tr>
-          <tr className="bg-gray-50 text-gray-500 text-xs">
-            <td className="sticky left-0 bg-gray-50 z-10 px-3 py-1 pl-6 whitespace-nowrap">
+          <tr className="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs">
+            <td className="sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 px-3 py-1 pl-6 whitespace-nowrap">
               貯蓄率
             </td>
             {totalRatio.map((ratio, i) => (
               <td
                 key={i}
-                className={`px-3 py-1 text-right whitespace-nowrap ${ratio < 0 ? 'text-red-600' : ''}`}
+                className={`px-3 py-1 text-right whitespace-nowrap ${ratio < 0 ? 'text-red-600 dark:text-red-400' : ''}`}
               >
                 {formatPercent(ratio)}
               </td>

@@ -52,7 +52,7 @@ export function RatioTrendChart({ members }: Props) {
 
   return (
     <section className="space-y-2">
-      <h2 className="text-sm font-bold text-gray-600">月別 支出率・貯蓄率 推移</h2>
+      <h2 className="text-sm font-bold text-gray-600 dark:text-gray-400">月別 支出率・貯蓄率 推移</h2>
       <div className="h-64">
         <LineChart labels={MONTH_LABELS} datasets={[...datasets, ...targetDatasets]} />
       </div>
