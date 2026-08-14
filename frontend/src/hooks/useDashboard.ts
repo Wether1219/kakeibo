@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Category, fetchCategories } from '../api/categories';
 import { MonthlySummary, fetchMonthlySummary } from '../api/summary';
-import { Transaction, fetchTransactions } from '../api/transactions';
+import { Transaction, deleteTransaction, fetchTransactions } from '../api/transactions';
 import { User, fetchUsers } from '../api/users';
 import { WeeklyBudgetWithActual, fetchWeeklyBudgets } from '../api/weeklyBudgets';
 
@@ -13,6 +13,7 @@ export interface DashboardData {
   users: User[];
   loading: boolean;
   error: string | null;
+  removeTransaction: (id: string, userId: string) => Promise<void>;
 }
 
 export function useDashboard(year: number, month: number): DashboardData {
@@ -23,6 +24,7 @@ export function useDashboard(year: number, month: number): DashboardData {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,7 +56,12 @@ export function useDashboard(year: number, month: number): DashboardData {
     return () => {
       cancelled = true;
     };
-  }, [year, month]);
+  }, [year, month, reloadToken]);
 
-  return { summary, weeklyBudgets, recentTransactions, categories, users, loading, error };
+  const removeTransaction = useCallback(async (id: string, userId: string) => {
+    await deleteTransaction(id, userId);
+    setReloadToken((t) => t + 1);
+  }, []);
+
+  return { summary, weeklyBudgets, recentTransactions, categories, users, loading, error, removeTransaction };
 }

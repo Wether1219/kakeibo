@@ -7,6 +7,7 @@ interface Props {
   categories: Category[];
   users: User[];
   onShowMore?: () => void;
+  onDelete?: (id: string) => void | Promise<void>;
 }
 
 function formatYen(amount: number): string {
@@ -18,9 +19,17 @@ function formatDate(dateStr: string): string {
   return `${Number(month)}/${Number(day)}`;
 }
 
-export function RecentTransactions({ transactions, categories, users, onShowMore }: Props) {
+export function RecentTransactions({ transactions, categories, users, onShowMore, onDelete }: Props) {
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
   const userMap = new Map(users.map((u) => [u.id, u]));
+
+  const handleDelete = (t: Transaction) => {
+    if (!onDelete) return;
+    const category = categoryMap.get(t.categoryId);
+    const label = `${formatDate(t.transactionDate)} ${category?.name ?? ''} ${formatYen(t.amount)}`;
+    if (!window.confirm(`この取引を削除しますか？\n${label}`)) return;
+    onDelete(t.id);
+  };
 
   return (
     <section>
@@ -42,6 +51,16 @@ export function RecentTransactions({ transactions, categories, users, onShowMore
               <span className="w-16 shrink-0 text-gray-500">{targetName}</span>
               <span className="w-20 shrink-0 text-right font-medium">{formatYen(t.amount)}</span>
               <span className="flex-1 truncate text-gray-500">{t.memo}</span>
+              {onDelete && (
+                <button
+                  type="button"
+                  aria-label="削除"
+                  className="shrink-0 text-gray-400 hover:text-red-600"
+                  onClick={() => handleDelete(t)}
+                >
+                  削除
+                </button>
+              )}
             </div>
           );
         })}
