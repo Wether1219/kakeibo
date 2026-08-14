@@ -161,6 +161,46 @@ describe('/api/v1/transactions', () => {
     expect(res.body[0].transactionDate).toBe(`${currentYear}-05-10`);
   });
 
+  it('limit・sort=date_descで件数制限と日付降順が反映される', async () => {
+    await request(app)
+      .post('/api/v1/transactions')
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
+      .send(baseBody({ transactionDate: `${currentYear}-05-01` }));
+    await request(app)
+      .post('/api/v1/transactions')
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
+      .send(baseBody({ transactionDate: `${currentYear}-05-20` }));
+    await request(app)
+      .post('/api/v1/transactions')
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString())
+      .set('x-user-id', USER_ID.toString())
+      .send(baseBody({ transactionDate: `${currentYear}-05-10` }));
+
+    const res = await request(app)
+      .get(`/api/v1/transactions?year=${currentYear}&month=5&limit=2&sort=date_desc`)
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    expect(res.body[0].transactionDate).toBe(`${currentYear}-05-20`);
+    expect(res.body[1].transactionDate).toBe(`${currentYear}-05-10`);
+  });
+
+  it('不正なsortは400', async () => {
+    const res = await request(app)
+      .get('/api/v1/transactions?sort=amount_asc')
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+    expect(res.status).toBe(400);
+  });
+
+  it('不正なlimit（0以下）は400', async () => {
+    const res = await request(app)
+      .get('/api/v1/transactions?limit=0')
+      .set('x-household-id', TEST_HOUSEHOLD_ID.toString());
+    expect(res.status).toBe(400);
+  });
+
   it('取引を更新できる', async () => {
     const createRes = await request(app)
       .post('/api/v1/transactions')
