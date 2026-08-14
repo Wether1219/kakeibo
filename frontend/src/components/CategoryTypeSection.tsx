@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { IconPicker } from './IconPicker';
 import type { Category } from '../api/categories';
 
 interface Props {
@@ -60,13 +61,7 @@ export function CategoryTypeSection({
             <span className="text-gray-300" aria-hidden>
               ⠿
             </span>
-            <input
-              className="w-10 text-center border border-transparent hover:border-gray-300 rounded"
-              value={c.icon ?? ''}
-              maxLength={4}
-              onChange={(e) => onChangeIcon(c.id, e.target.value)}
-              aria-label="アイコン"
-            />
+            <IconPicker value={c.icon ?? ''} onChange={(icon) => onChangeIcon(c.id, icon)} />
             {editingId === c.id ? (
               <input
                 autoFocus
