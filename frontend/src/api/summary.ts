@@ -44,3 +44,27 @@ export async function fetchMonthlySummary(year: number, month: number): Promise<
   if (!res.ok) throw new Error('収支サマリの取得に失敗しました');
   return res.json();
 }
+
+export type CategoryType = 'income' | 'pre_saving' | 'fixed_expense' | 'variable_expense';
+
+export interface AnnualSummaryRow {
+  categoryType: CategoryType;
+  categoryName: string;
+  userId: string;
+  displayName: string;
+  months: number[];
+  annualTotal: number;
+}
+
+export interface AnnualSummary {
+  year: number;
+  rows: AnnualSummaryRow[];
+}
+
+export async function fetchAnnualSummary(year: number): Promise<AnnualSummary> {
+  const res = await fetch(`${API_BASE}/summary/annual?year=${year}`, {
+    headers: headers(),
+  });
+  if (!res.ok) throw new Error('年間推移データの取得に失敗しました');
+  return res.json();
+}
