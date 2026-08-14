@@ -1,11 +1,4 @@
-import { ensureCurrentUserId } from './users';
-
-const API_BASE = '/api/v1';
-
-// 認証実装までの暫定措置。フェーズ0でJWTベースのAPIクライアントに置き換える。
-const TEMP_HOUSEHOLD_ID = '1';
-// useTransactionForm.tsと同じキー（「自分」ユーザーの暫定選択）。
-const CURRENT_USER_KEY = 'kakeibo_current_user_id';
+import { apiFetch } from './client';
 
 export interface AssetBalanceRow {
   assetId: string;
@@ -34,29 +27,15 @@ export interface AssetBalanceBulkItem {
   balance: number;
 }
 
-function headers(userId?: string) {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'x-household-id': TEMP_HOUSEHOLD_ID,
-  };
-  const resolvedUserId = userId ?? localStorage.getItem(CURRENT_USER_KEY);
-  if (resolvedUserId) {
-    headers['x-user-id'] = resolvedUserId;
-  }
-  return headers;
-}
-
 export async function fetchAssetBalances(year: number): Promise<AssetBalanceSummary> {
-  const res = await fetch(`${API_BASE}/asset-balances?year=${year}`, { headers: headers() });
+  const res = await apiFetch(`/asset-balances?year=${year}`);
   if (!res.ok) throw new Error('資産残高の取得に失敗しました');
   return res.json();
 }
 
 export async function bulkUpdateAssetBalances(items: AssetBalanceBulkItem[]): Promise<unknown> {
-  const userId = await ensureCurrentUserId();
-  const res = await fetch(`${API_BASE}/asset-balances/bulk`, {
+  const res = await apiFetch('/asset-balances/bulk', {
     method: 'PUT',
-    headers: headers(userId),
     body: JSON.stringify(items),
   });
   if (!res.ok) throw new Error('資産残高の保存に失敗しました');

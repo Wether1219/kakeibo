@@ -14,7 +14,6 @@ export function TransactionInput() {
     users,
     currentUserId,
     otherUser,
-    selectCurrentUser,
     categoriesForType,
     loading,
     saving,
@@ -57,26 +56,6 @@ export function TransactionInput() {
   return (
     <div className="max-w-md mx-auto p-4">
       <h1 className="text-xl font-bold mb-4">取引入力</h1>
-
-      {users.length > 0 && (
-        <div className="mb-4 flex items-center gap-2 text-sm">
-          <span className="text-gray-500">あなたは：</span>
-          {users.map((u) => (
-            <button
-              key={u.id}
-              type="button"
-              onClick={() => selectCurrentUser(u.id)}
-              className={`px-2 py-1 rounded border ${
-                currentUserId === u.id
-                  ? 'border-blue-600 text-blue-600 font-bold'
-                  : 'border-gray-300 text-gray-500'
-              }`}
-            >
-              {u.displayName}
-            </button>
-          ))}
-        </div>
-      )}
 
       {loading && <p className="text-sm text-gray-400">読み込み中...</p>}
 

@@ -1,7 +1,4 @@
-const API_BASE = '/api/v1';
-
-// 認証実装までの暫定措置。フェーズ0でJWTベースのAPIクライアントに置き換える。
-const TEMP_HOUSEHOLD_ID = '1';
+import { apiFetch } from './client';
 
 export interface MonthlySummaryMember {
   userId: string;
@@ -30,17 +27,8 @@ export interface MonthlySummary {
   variableExpenseByCategory: MonthlySummaryCategoryRow[];
 }
 
-function headers() {
-  return {
-    'Content-Type': 'application/json',
-    'x-household-id': TEMP_HOUSEHOLD_ID,
-  };
-}
-
 export async function fetchMonthlySummary(year: number, month: number): Promise<MonthlySummary> {
-  const res = await fetch(`${API_BASE}/summary/monthly?year=${year}&month=${month}`, {
-    headers: headers(),
-  });
+  const res = await apiFetch(`/summary/monthly?year=${year}&month=${month}`);
   if (!res.ok) throw new Error('収支サマリの取得に失敗しました');
   return res.json();
 }
@@ -62,9 +50,7 @@ export interface AnnualSummary {
 }
 
 export async function fetchAnnualSummary(year: number): Promise<AnnualSummary> {
-  const res = await fetch(`${API_BASE}/summary/annual?year=${year}`, {
-    headers: headers(),
-  });
+  const res = await apiFetch(`/summary/annual?year=${year}`);
   if (!res.ok) throw new Error('年間推移データの取得に失敗しました');
   return res.json();
 }
@@ -120,9 +106,7 @@ export interface VisualizationSummary {
 }
 
 export async function fetchVisualizationSummary(year: number): Promise<VisualizationSummary> {
-  const res = await fetch(`${API_BASE}/summary/visualization?year=${year}`, {
-    headers: headers(),
-  });
+  const res = await apiFetch(`/summary/visualization?year=${year}`);
   if (!res.ok) throw new Error('収支可視化データの取得に失敗しました');
   return res.json();
 }
