@@ -44,30 +44,30 @@ export function AnnualCrossTable({ rows }: Props) {
   }
 
   return (
-    <div className="overflow-x-auto border border-gray-200 rounded">
+    <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded">
       <table className="min-w-full text-sm border-collapse">
         <thead>
-          <tr className="bg-gray-50">
-            <th className="sticky left-0 bg-gray-50 z-10 px-3 py-2 text-left font-medium text-gray-500 border-b border-gray-200 whitespace-nowrap">
+          <tr className="bg-gray-50 dark:bg-gray-800">
+            <th className="sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 px-3 py-2 text-left font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap">
               費目
             </th>
             {MONTH_LABELS.map((label) => (
               <th
                 key={label}
-                className="px-3 py-2 text-right font-medium text-gray-500 border-b border-gray-200 whitespace-nowrap"
+                className="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap"
               >
                 {label}
               </th>
             ))}
-            <th className="px-3 py-2 text-right font-medium text-gray-500 border-b border-gray-200 whitespace-nowrap">
+            <th className="px-3 py-2 text-right font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700 whitespace-nowrap">
               年間合計
             </th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={`${row.categoryName}-${row.userId}`} className="border-b border-gray-100">
-              <td className="sticky left-0 bg-white z-10 px-3 py-2 whitespace-nowrap">
+            <tr key={`${row.categoryName}-${row.userId}`} className="border-b border-gray-100 dark:border-gray-700">
+              <td className="sticky left-0 bg-white dark:bg-gray-800 z-10 px-3 py-2 whitespace-nowrap">
                 {row.categoryName}({row.displayName})
               </td>
               {row.months.map((amount, i) => (
@@ -81,8 +81,8 @@ export function AnnualCrossTable({ rows }: Props) {
             </tr>
           ))}
           {Array.from(userTotals.values()).map((userTotal) => (
-            <tr key={`total-${userTotal.userId}`} className="bg-gray-50 font-medium">
-              <td className="sticky left-0 bg-gray-50 z-10 px-3 py-2 whitespace-nowrap">
+            <tr key={`total-${userTotal.userId}`} className="bg-gray-50 dark:bg-gray-800 font-medium">
+              <td className="sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 px-3 py-2 whitespace-nowrap">
                 合計（{userTotal.displayName}）
               </td>
               {userTotal.months.map((amount, i) => (
@@ -93,8 +93,8 @@ export function AnnualCrossTable({ rows }: Props) {
               <td className="px-3 py-2 text-right whitespace-nowrap">{formatYen(userTotal.annualTotal)}</td>
             </tr>
           ))}
-          <tr className="bg-gray-50 font-bold">
-            <td className="sticky left-0 bg-gray-50 z-10 px-3 py-2 whitespace-nowrap">合計</td>
+          <tr className="bg-gray-50 dark:bg-gray-800 font-bold">
+            <td className="sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 px-3 py-2 whitespace-nowrap">合計</td>
             {totalMonths.map((amount, i) => (
               <td key={i} className="px-3 py-2 text-right whitespace-nowrap">
                 {formatYen(amount)}

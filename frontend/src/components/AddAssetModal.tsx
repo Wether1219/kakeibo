@@ -56,22 +56,22 @@ export function AddAssetModal({ assetGroup, onClose, onCreated }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded shadow-lg w-full max-w-sm p-4">
+      <div className="bg-white dark:bg-gray-800 rounded shadow-lg w-full max-w-sm p-4">
         <h2 className="text-lg font-bold mb-4">口座追加</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-500">名称</label>
+            <label className="block text-xs text-gray-500 dark:text-gray-400">名称</label>
             <input
               type="text"
-              className="w-full border border-gray-300 rounded px-2 py-1"
+              className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500">名義</label>
+            <label className="block text-xs text-gray-500 dark:text-gray-400">名義</label>
             <select
-              className="w-full border border-gray-300 rounded px-2 py-1"
+              className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
               value={ownerUserId}
               onChange={(e) => setOwnerUserId(e.target.value)}
             >
@@ -83,39 +83,39 @@ export function AddAssetModal({ assetGroup, onClose, onCreated }: Props) {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-500">詳細</label>
+            <label className="block text-xs text-gray-500 dark:text-gray-400">詳細</label>
             <input
               type="text"
-              className="w-full border border-gray-300 rounded px-2 py-1"
+              className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
               value={detail}
               onChange={(e) => setDetail(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500">用途</label>
+            <label className="block text-xs text-gray-500 dark:text-gray-400">用途</label>
             <input
               type="text"
-              className="w-full border border-gray-300 rounded px-2 py-1"
+              className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500">積立額</label>
+            <label className="block text-xs text-gray-500 dark:text-gray-400">積立額</label>
             <input
               type="number"
-              className="w-full border border-gray-300 rounded px-2 py-1"
+              className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
               value={monthlyContribution}
               onChange={(e) => setMonthlyContribution(e.target.value)}
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
-              className="px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+              className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
               onClick={onClose}
             >
               キャンセル

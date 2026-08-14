@@ -47,8 +47,8 @@ export function CategoryTypeSection({
 
   return (
     <section className="mb-6">
-      <h2 className="text-sm font-bold text-gray-500 mb-2">{title}</h2>
-      <ul className="rounded border border-gray-200 divide-y divide-gray-100">
+      <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">{title}</h2>
+      <ul className="rounded border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
         {categories.map((c, index) => (
           <li
             key={c.id}
@@ -56,16 +56,16 @@ export function CategoryTypeSection({
             onDragStart={() => setDragIndex(index)}
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => handleDrop(index)}
-            className="flex items-center gap-2 px-3 py-2 bg-white cursor-move"
+            className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 cursor-move"
           >
-            <span className="text-gray-300" aria-hidden>
+            <span className="text-gray-300 dark:text-gray-600" aria-hidden>
               ⠿
             </span>
             <IconPicker value={c.icon ?? ''} onChange={(icon) => onChangeIcon(c.id, icon)} />
             {editingId === c.id ? (
               <input
                 autoFocus
-                className="flex-1 border border-gray-300 rounded px-2 py-1"
+                className="flex-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
                 onBlur={() => commitEdit(c.id)}
@@ -77,7 +77,7 @@ export function CategoryTypeSection({
             ) : (
               <button
                 type="button"
-                className="flex-1 text-left px-2 py-1 hover:bg-gray-50 rounded"
+                className="flex-1 text-left px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded"
                 onClick={() => startEdit(c)}
               >
                 {c.name}
@@ -85,7 +85,7 @@ export function CategoryTypeSection({
             )}
             <button
               type="button"
-              className="text-xs text-red-500 hover:text-red-700 px-2"
+              className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2"
               onClick={() => onDeactivate(c.id)}
             >
               無効化
@@ -93,7 +93,7 @@ export function CategoryTypeSection({
           </li>
         ))}
         {categories.length === 0 && (
-          <li className="px-3 py-4 text-sm text-gray-400">費目がありません</li>
+          <li className="px-3 py-4 text-sm text-gray-400 dark:text-gray-500">費目がありません</li>
         )}
       </ul>
     </section>

@@ -101,8 +101,8 @@ export function SC07_AnnualTrend() {
 
       <CategoryTypeTab value={tab} onChange={setTab} />
 
-      {loading && <p className="text-sm text-gray-400">読み込み中...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {!loading && !error && (
         <>
@@ -116,7 +116,7 @@ export function SC07_AnnualTrend() {
             <div className="flex flex-wrap items-center gap-4">
               {!isSavingsTotal && (
                 <select
-                  className="border border-gray-300 rounded px-2 py-1 text-sm"
+                  className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1 text-sm"
                   value={selectedCategoryName}
                   onChange={(e) => setSelectedCategoryName(e.target.value)}
                 >

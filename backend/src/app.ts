@@ -12,6 +12,8 @@ import { auditLogsRouter } from './routes/auditLogs';
 import { exportRouter } from './routes/export';
 import { assetsRouter } from './routes/assets';
 import { assetBalancesRouter } from './routes/assetBalances';
+import { recurringTransactionsRouter } from './routes/recurringTransactions';
+import { savingsGoalsRouter } from './routes/savingsGoals';
 
 export function createApp() {
   const app = express();
@@ -29,5 +31,7 @@ export function createApp() {
   app.use('/api/v1/assets', assetsRouter);
   app.use('/api/v1/asset-balances', assetBalancesRouter);
   app.use('/api/v1/import', importRouter);
+  app.use('/api/v1/recurring-transactions', recurringTransactionsRouter);
+  app.use('/api/v1/savings-goals', savingsGoalsRouter);
   return app;
 }

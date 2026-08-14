@@ -42,18 +42,18 @@ export function IncomeAndPreSaving() {
 
       <div className="flex items-end gap-2 mb-6">
         <div>
-          <label className="block text-xs text-gray-500">年</label>
+          <label className="block text-xs text-gray-500 dark:text-gray-400">年</label>
           <input
             type="number"
-            className="w-24 border border-gray-300 rounded px-2 py-1"
+            className="w-24 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500">月</label>
+          <label className="block text-xs text-gray-500 dark:text-gray-400">月</label>
           <select
-            className="border border-gray-300 rounded px-2 py-1"
+            className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
             value={month}
             onChange={(e) => setMonth(Number(e.target.value))}
           >
@@ -66,13 +66,13 @@ export function IncomeAndPreSaving() {
         </div>
       </div>
 
-      {loading && <p className="text-sm text-gray-400">読み込み中...</p>}
-      {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400 mb-4">{error}</p>}
 
       {!loading && (
         <>
           <section className="mb-8">
-            <h2 className="text-sm font-bold text-gray-500 mb-2">収入</h2>
+            <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">収入</h2>
             <IncomeGrid
               categories={incomeCategories}
               users={users}
@@ -82,7 +82,7 @@ export function IncomeAndPreSaving() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-sm font-bold text-gray-500 mb-2">先取り貯金・投資</h2>
+            <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">先取り貯金・投資</h2>
             <PreSavingGrid
               categories={preSavingCategories}
               users={users}
@@ -102,7 +102,7 @@ export function IncomeAndPreSaving() {
             >
               {saving ? '保存中...' : '保存'}
             </button>
-            {saveMessage && <span className="text-sm text-green-600">{saveMessage}</span>}
+            {saveMessage && <span className="text-sm text-green-600 dark:text-green-400">{saveMessage}</span>}
           </div>
         </>
       )}

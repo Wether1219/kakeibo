@@ -1,5 +1,6 @@
 import { NavLink, useSearchParams } from 'react-router-dom';
 import { clearSession } from '../api/client';
+import { useTheme } from '../hooks/useTheme';
 
 const NAV_ITEMS: { to: string; icon: string; label: string }[] = [
   { to: '/dashboard', icon: '🏠', label: 'ダッシュボード' },
@@ -19,6 +20,7 @@ const NAV_ITEMS: { to: string; icon: string; label: string }[] = [
 export function NavBar() {
   const [searchParams] = useSearchParams();
   const search = searchParams.toString();
+  const { theme, toggleTheme } = useTheme();
 
   const handleLogout = () => {
     clearSession();
@@ -26,7 +28,7 @@ export function NavBar() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-10 border-t border-gray-200 bg-white">
+    <nav className="fixed bottom-0 left-0 right-0 z-10 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <div className="flex overflow-x-auto">
         {NAV_ITEMS.map((item) => (
           <NavLink
@@ -34,7 +36,7 @@ export function NavBar() {
             to={search ? `${item.to}?${search}` : item.to}
             className={({ isActive }) =>
               `flex flex-shrink-0 flex-col items-center justify-center gap-0.5 px-3 py-1.5 min-w-[4.5rem] text-[11px] ${
-                isActive ? 'text-blue-600 font-bold' : 'text-gray-500'
+                isActive ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-500 dark:text-gray-400'
               }`
             }
           >
@@ -44,8 +46,16 @@ export function NavBar() {
         ))}
         <button
           type="button"
+          onClick={toggleTheme}
+          className="flex flex-shrink-0 flex-col items-center justify-center gap-0.5 px-3 py-1.5 min-w-[4.5rem] text-[11px] text-gray-500 dark:text-gray-400"
+        >
+          <span className="text-lg leading-none">{theme === 'dark' ? '☀️' : '🌙'}</span>
+          <span className="whitespace-nowrap">{theme === 'dark' ? 'ライト' : 'ダーク'}</span>
+        </button>
+        <button
+          type="button"
           onClick={handleLogout}
-          className="flex flex-shrink-0 flex-col items-center justify-center gap-0.5 px-3 py-1.5 min-w-[4.5rem] text-[11px] text-gray-500"
+          className="flex flex-shrink-0 flex-col items-center justify-center gap-0.5 px-3 py-1.5 min-w-[4.5rem] text-[11px] text-gray-500 dark:text-gray-400"
         >
           <span className="text-lg leading-none">🚪</span>
           <span className="whitespace-nowrap">ログアウト</span>

@@ -33,29 +33,29 @@ export function RecentTransactions({ transactions, categories, users, onShowMore
 
   return (
     <section>
-      <h2 className="text-sm font-bold text-gray-500 mb-2">直近取引（最新{transactions.length}件）</h2>
-      <div className="rounded border border-gray-200 bg-white divide-y divide-gray-100">
+      <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">直近取引（最新{transactions.length}件）</h2>
+      <div className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
         {transactions.length === 0 && (
-          <p className="px-4 py-4 text-sm text-gray-400">取引がありません</p>
+          <p className="px-4 py-4 text-sm text-gray-400 dark:text-gray-500">取引がありません</p>
         )}
         {transactions.map((t) => {
           const category = categoryMap.get(t.categoryId);
           const targetName = t.splitType === 'shared' ? '共通' : userMap.get(t.userId ?? '')?.displayName ?? '-';
           return (
             <div key={t.id} className="flex items-center gap-3 px-4 py-2 text-sm">
-              <span className="text-gray-400 w-10 shrink-0">{formatDate(t.transactionDate)}</span>
+              <span className="text-gray-400 dark:text-gray-500 w-10 shrink-0">{formatDate(t.transactionDate)}</span>
               <span className="w-24 shrink-0 truncate">
                 {category?.icon ?? ''}
                 {category?.name ?? ''}
               </span>
-              <span className="w-16 shrink-0 text-gray-500">{targetName}</span>
+              <span className="w-16 shrink-0 text-gray-500 dark:text-gray-400">{targetName}</span>
               <span className="w-20 shrink-0 text-right font-medium">{formatYen(t.amount)}</span>
-              <span className="flex-1 truncate text-gray-500">{t.memo}</span>
+              <span className="flex-1 truncate text-gray-500 dark:text-gray-400">{t.memo}</span>
               {onDelete && (
                 <button
                   type="button"
                   aria-label="削除"
-                  className="shrink-0 text-gray-400 hover:text-red-600"
+                  className="shrink-0 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400"
                   onClick={() => handleDelete(t)}
                 >
                   削除
@@ -67,7 +67,7 @@ export function RecentTransactions({ transactions, categories, users, onShowMore
       </div>
       {onShowMore && (
         <div className="text-right mt-2">
-          <button type="button" className="text-sm text-blue-600 hover:underline" onClick={onShowMore}>
+          <button type="button" className="text-sm text-blue-600 dark:text-blue-400 hover:underline" onClick={onShowMore}>
             もっと見る
           </button>
         </div>

@@ -18,6 +18,8 @@ model Household {
   users         User[]
   auditLogs     AuditLog[]
   assets        Asset[]
+  recurringTransactions RecurringTransaction[]
+  savingsGoals  SavingsGoal[]
 
   @@map("households")
 }
@@ -37,6 +39,7 @@ model User {
   preSavings            PreSaving[]
   auditLogs             AuditLog[]
   assets                Asset[]
+  recurringTransactions RecurringTransaction[]
 
   @@map("users")
 }
@@ -62,6 +65,7 @@ model Category {
   incomes       Income[]
   preSavings    PreSaving[]
   weeklyBudgets WeeklyBudget[]
+  recurringTransactions RecurringTransaction[]
 
   @@unique([householdId, type, name])
   @@map("categories")
@@ -86,6 +90,9 @@ model Transaction {
   memo            String?   @db.VarChar(255)
   createdBy       BigInt    @map("created_by")
   createdByUser   User      @relation("TransactionCreatedBy", fields: [createdBy], references: [id])
+  // 定期取引から自動生成された場合の生成元（当月分の二重生成防止に使う）。手入力の場合はNULL。
+  recurringTransactionId BigInt?               @map("recurring_transaction_id")
+  recurringTransaction   RecurringTransaction?  @relation(fields: [recurringTransactionId], references: [id])
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
@@ -204,4 +211,39 @@ model AuditLog {
 
   @@index([householdId, targetTable])
   @@map("audit_logs")
+}
+
+// 毎月自動で発生する取引のテンプレート（家賃・サブスク等）。
+// 生成された当月分transactionsから当月の最新状態を都度参照するため、実績値はここには持たない。
+model RecurringTransaction {
+  id           BigInt        @id @default(autoincrement())
+  householdId  BigInt        @map("household_id")
+  household    Household     @relation(fields: [householdId], references: [id])
+  categoryId   BigInt        @map("category_id")
+  category     Category      @relation(fields: [categoryId], references: [id])
+  splitType    SplitType     @map("split_type")
+  userId       BigInt?       @map("user_id")
+  user         User?         @relation(fields: [userId], references: [id])
+  amount       Decimal       @db.Decimal(10, 0)
+  memo         String?       @db.VarChar(255)
+  dayOfMonth   Int           @map("day_of_month") @db.TinyInt
+  isActive     Boolean       @default(true) @map("is_active")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  transactions Transaction[]
+
+  @@map("recurring_transactions")
+}
+
+// 貯金目標。進捗（実績の貯金累計）は既存の年間集計API(GET /summary/annual)から
+// フロント側で算出するため、本テーブルは目標額のみ保持する。
+model SavingsGoal {
+  id           BigInt    @id @default(autoincrement())
+  householdId  BigInt    @map("household_id")
+  household    Household @relation(fields: [householdId], references: [id])
+  name         String    @db.VarChar(100)
+  targetAmount Decimal   @map("target_amount") @db.Decimal(12, 0)
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@map("savings_goals")
 }

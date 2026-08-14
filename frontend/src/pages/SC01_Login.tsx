@@ -29,28 +29,28 @@ export function SC01_Login() {
       <h1 className="text-xl font-bold mb-6 text-center">家計簿ログイン</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs text-gray-500 mb-1">メールアドレス</label>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">メールアドレス</label>
           <input
             type="email"
             required
             autoComplete="email"
-            className="w-full border border-gray-300 rounded px-2 py-2 text-base"
+            className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-2 text-base"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1">パスワード</label>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">パスワード</label>
           <input
             type="password"
             required
             autoComplete="current-password"
-            className="w-full border border-gray-300 rounded px-2 py-2 text-base"
+            className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-2 text-base"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         <button
           type="submit"
           disabled={submitting}

@@ -106,9 +106,9 @@ export function SC09_AssetManagement() {
 
       <AssetGroupTab value={group} onChange={setGroup} />
 
-      {loading && <p className="text-sm text-gray-400">読み込み中...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {deleteError && <p className="text-sm text-red-600 dark:text-red-400">{deleteError}</p>}
 
       {!loading && (
         <>
@@ -139,7 +139,7 @@ export function SC09_AssetManagement() {
 
           {ownerTrendCharts.map((chart) => (
             <section key={chart.ownerUserId} className="space-y-2">
-              <h2 className="text-sm font-medium text-gray-500">資産推移（{chart.title}）</h2>
+              <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">資産推移（{chart.title}）</h2>
               <div className="h-64">
                 <LineChart labels={MONTH_LABELS} datasets={chart.datasets} />
               </div>
@@ -147,7 +147,7 @@ export function SC09_AssetManagement() {
           ))}
 
           <section className="space-y-2">
-            <h2 className="text-sm font-medium text-gray-500">資産推移（総合計）</h2>
+            <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">資産推移（総合計）</h2>
             <div className="h-64">
               <LineChart labels={MONTH_LABELS} datasets={totalTrendDatasets} />
             </div>

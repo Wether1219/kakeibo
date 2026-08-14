@@ -54,7 +54,7 @@ export function TransactionInput() {
   const renderCategoryGroup = (label: string, list: Category[]) =>
     list.length > 0 && (
       <div>
-        <p className="text-xs text-gray-400 mb-1">{label}</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">{label}</p>
         <div className="grid grid-cols-3 gap-2">
           {list.map((c) => (
             <button
@@ -63,8 +63,8 @@ export function TransactionInput() {
               onClick={() => setCategoryId(c.id)}
               className={`py-2 rounded border text-sm font-bold truncate ${
                 categoryId === c.id
-                  ? 'border-blue-600 bg-blue-50 text-blue-600'
-                  : 'border-gray-300 text-gray-500'
+                  ? 'border-blue-600 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400'
+                  : 'border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400'
               }`}
             >
               {c.icon ?? ''} {c.name}
@@ -78,15 +78,15 @@ export function TransactionInput() {
     <div className="max-w-md mx-auto p-4">
       <h1 className="text-xl font-bold mb-4">取引入力</h1>
 
-      {loading && <p className="text-sm text-gray-400">読み込み中...</p>}
+      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
 
       {!loading && (
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* ①費目選択（1タップ、固定費・変動費をまとめた1つのグリッド） */}
           <div className="space-y-3">
-            <label className="block text-xs text-gray-500">費目</label>
+            <label className="block text-xs text-gray-500 dark:text-gray-400">費目</label>
             {variableCategories.length === 0 && fixedCategories.length === 0 && (
-              <p className="text-sm text-gray-400">費目がありません</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">費目がありません</p>
             )}
             {renderCategoryGroup('変動費', variableCategories)}
             {renderCategoryGroup('固定費', fixedCategories)}
@@ -94,7 +94,7 @@ export function TransactionInput() {
 
           {/* ②対象者選択（1タップ、初期値は「自分」） */}
           <div>
-            <label className="block text-xs text-gray-500 mb-1">対象者</label>
+            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">対象者</label>
             <div className="grid grid-cols-3 gap-2">
               {targetOptions.map((opt) => (
                 <button
@@ -103,8 +103,8 @@ export function TransactionInput() {
                   onClick={() => setTarget(opt.key)}
                   className={`py-2 rounded border text-sm font-bold ${
                     target === opt.key
-                      ? 'border-blue-600 bg-blue-50 text-blue-600'
-                      : 'border-gray-300 text-gray-500'
+                      ? 'border-blue-600 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400'
+                      : 'border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400'
                   }`}
                 >
                   {opt.label}
@@ -115,13 +115,13 @@ export function TransactionInput() {
 
           {/* 金額（テンキー入力、タップ数にはカウントしない） */}
           <div>
-            <label className="block text-xs text-gray-500 mb-1">金額</label>
+            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">金額</label>
             <input
               type="number"
               inputMode="numeric"
               min={1}
               step={1}
-              className="w-full border border-gray-300 rounded px-2 py-2 text-2xl text-right"
+              className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-2 text-2xl text-right"
               value={amount}
               placeholder="0"
               onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
@@ -129,24 +129,24 @@ export function TransactionInput() {
           </div>
 
           <details className="text-sm">
-            <summary className="text-gray-500 cursor-pointer select-none">
+            <summary className="text-gray-500 dark:text-gray-400 cursor-pointer select-none">
               日付・メモ（任意）
             </summary>
             <div className="mt-2 space-y-3">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">日付</label>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">日付</label>
                 <input
                   type="date"
-                  className="w-full border border-gray-300 rounded px-2 py-1"
+                  className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
                   value={transactionDate}
                   onChange={(e) => setTransactionDate(e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">メモ</label>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">メモ</label>
                 <input
                   type="text"
-                  className="w-full border border-gray-300 rounded px-2 py-1"
+                  className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
                   value={memo}
                   onChange={(e) => setMemo(e.target.value)}
                 />
@@ -154,7 +154,7 @@ export function TransactionInput() {
             </div>
           </details>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           {/* ③保存（1タップ） */}
           <button
@@ -164,7 +164,7 @@ export function TransactionInput() {
           >
             {saving ? '保存中...' : '保存'}
           </button>
-          {saveMessage && <p className="text-sm text-green-600 text-center">{saveMessage}</p>}
+          {saveMessage && <p className="text-sm text-green-600 dark:text-green-400 text-center">{saveMessage}</p>}
         </form>
       )}
     </div>
