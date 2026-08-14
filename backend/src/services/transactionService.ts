@@ -32,10 +32,17 @@ function validateInput(data: TransactionInput) {
 
 export type TransactionSort = 'date_desc';
 
-export async function listTransactions(
-  householdId: bigint,
-  filter: { year?: number; month?: number; categoryId?: bigint; limit?: number; sort?: TransactionSort }
-) {
+export interface TransactionListFilter {
+  year?: number;
+  month?: number;
+  categoryId?: bigint;
+  keyword?: string;
+  limit?: number;
+  offset?: number;
+  sort?: TransactionSort;
+}
+
+function buildWhere(householdId: bigint, filter: TransactionListFilter): Prisma.TransactionWhereInput {
   const where: Prisma.TransactionWhereInput = { householdId };
   if (filter.year !== undefined) {
     const month = filter.month;
@@ -49,11 +56,29 @@ export async function listTransactions(
   if (filter.categoryId !== undefined) {
     where.categoryId = filter.categoryId;
   }
+  if (filter.keyword !== undefined && filter.keyword !== '') {
+    where.OR = [
+      { memo: { contains: filter.keyword } },
+      { category: { name: { contains: filter.keyword } } },
+    ];
+  }
+  return where;
+}
+
+export async function listTransactions(householdId: bigint, filter: TransactionListFilter) {
   return prisma.transaction.findMany({
-    where,
+    where: buildWhere(householdId, filter),
     orderBy: { transactionDate: 'desc' },
     take: filter.limit,
+    skip: filter.offset,
   });
+}
+
+export async function countTransactions(
+  householdId: bigint,
+  filter: Pick<TransactionListFilter, 'year' | 'month' | 'categoryId' | 'keyword'>
+) {
+  return prisma.transaction.count({ where: buildWhere(householdId, filter) });
 }
 
 export async function createTransaction(

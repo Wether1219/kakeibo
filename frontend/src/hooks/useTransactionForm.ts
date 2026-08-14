@@ -3,10 +3,9 @@ import * as categoriesApi from '../api/categories';
 import * as usersApi from '../api/users';
 import * as transactionsApi from '../api/transactions';
 import { getCurrentUserId } from '../api/client';
-import type { Category, CategoryType } from '../api/categories';
+import type { Category } from '../api/categories';
 import type { User } from '../api/users';
 
-export type ExpenseType = Extract<CategoryType, 'fixed_expense' | 'variable_expense'>;
 export type TargetSelection = 'self' | 'other' | 'shared';
 
 function today(): string {
@@ -23,7 +22,6 @@ export function useTransactionForm() {
   // ログイン中のユーザー = 「自分」。ログイン時にclient.tsが保存する。
   const currentUserId = getCurrentUserId();
 
-  const [expenseType, setExpenseType] = useState<ExpenseType>('variable_expense');
   const [categoryId, setCategoryId] = useState<string>('');
   const [target, setTarget] = useState<TargetSelection>('self');
   const [transactionDate, setTransactionDate] = useState(today());
@@ -42,7 +40,10 @@ export function useTransactionForm() {
       .then(([userList, fixedCats, variableCats]) => {
         if (cancelled) return;
         setUsers(userList);
-        setCategories([...fixedCats, ...variableCats].filter((c) => c.isActive));
+        // 変動費（日々の支出で使用頻度が高い）を先に並べ、初期選択も変動費の先頭費目にする。
+        const activeCategories = [...variableCats, ...fixedCats].filter((c) => c.isActive);
+        setCategories(activeCategories);
+        setCategoryId(activeCategories[0]?.id ?? '');
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
@@ -55,19 +56,8 @@ export function useTransactionForm() {
     };
   }, []);
 
-  const categoriesForType = categories.filter((c) => c.type === expenseType);
-
-  // 選択中の区分に費目がない、または区分切替直後は、その区分の先頭費目を自動選択する
-  useEffect(() => {
-    if (categoriesForType.length === 0) {
-      setCategoryId('');
-      return;
-    }
-    if (!categoriesForType.some((c) => c.id === categoryId)) {
-      setCategoryId(categoriesForType[0].id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expenseType, categories]);
+  const variableCategories = categories.filter((c) => c.type === 'variable_expense');
+  const fixedCategories = categories.filter((c) => c.type === 'fixed_expense');
 
   const otherUser = users.find((u) => u.id !== currentUserId) ?? null;
 
@@ -118,12 +108,11 @@ export function useTransactionForm() {
     users,
     currentUserId,
     otherUser,
-    categoriesForType,
+    variableCategories,
+    fixedCategories,
     loading,
     saving,
     error,
-    expenseType,
-    setExpenseType,
     categoryId,
     setCategoryId,
     target,

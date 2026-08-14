@@ -33,17 +33,41 @@ export interface TransactionListParams {
   sort?: 'date_desc';
 }
 
-export async function fetchTransactions(params: TransactionListParams = {}): Promise<Transaction[]> {
+function buildTransactionQuery(params: TransactionListParams & { keyword?: string; offset?: number }) {
   const query = new URLSearchParams();
   if (params.year !== undefined) query.set('year', String(params.year));
   if (params.month !== undefined) query.set('month', String(params.month));
   if (params.categoryId !== undefined) query.set('categoryId', params.categoryId);
+  if (params.keyword !== undefined && params.keyword !== '') query.set('keyword', params.keyword);
   if (params.limit !== undefined) query.set('limit', String(params.limit));
+  if (params.offset !== undefined) query.set('offset', String(params.offset));
   if (params.sort !== undefined) query.set('sort', params.sort);
-  const qs = query.toString();
+  return query.toString();
+}
+
+export async function fetchTransactions(params: TransactionListParams = {}): Promise<Transaction[]> {
+  const qs = buildTransactionQuery(params);
   const res = await apiFetch(`/transactions${qs ? `?${qs}` : ''}`);
   if (!res.ok) throw new Error('取引一覧の取得に失敗しました');
   return res.json();
+}
+
+export interface TransactionPage {
+  items: Transaction[];
+  total: number;
+}
+
+// SC04（取引一覧・編集画面）向け。サーバー側でkeyword検索・offsetページネーションを行い、
+// レスポンスヘッダーX-Total-Countから絞り込み後の全件数を取得する。
+export async function fetchTransactionsPage(
+  params: TransactionListParams & { keyword?: string; offset?: number }
+): Promise<TransactionPage> {
+  const qs = buildTransactionQuery(params);
+  const res = await apiFetch(`/transactions${qs ? `?${qs}` : ''}`);
+  if (!res.ok) throw new Error('取引一覧の取得に失敗しました');
+  const items = (await res.json()) as Transaction[];
+  const total = Number(res.headers.get('X-Total-Count') ?? items.length);
+  return { items, total };
 }
 
 export async function createTransaction(data: TransactionInput): Promise<Transaction> {

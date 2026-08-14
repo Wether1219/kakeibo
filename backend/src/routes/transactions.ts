@@ -5,6 +5,7 @@ import {
   TransactionInput,
   TransactionNotFoundError,
   TransactionValidationError,
+  countTransactions,
   createTransaction,
   deleteTransaction,
   listTransactions,
@@ -81,7 +82,7 @@ export const transactionsRouter = Router();
 transactionsRouter.use(authMiddleware);
 
 transactionsRouter.get('/', async (req: HouseholdRequest, res) => {
-  const { year, month, categoryId, limit, sort } = req.query;
+  const { year, month, categoryId, keyword, limit, offset, sort } = req.query;
   if (year !== undefined && !/^\d+$/.test(String(year))) {
     res.status(400).json({ error: 'yearが不正です' });
     return;
@@ -98,17 +99,29 @@ transactionsRouter.get('/', async (req: HouseholdRequest, res) => {
     res.status(400).json({ error: 'limitが不正です' });
     return;
   }
+  if (offset !== undefined && !/^\d+$/.test(String(offset))) {
+    res.status(400).json({ error: 'offsetが不正です' });
+    return;
+  }
   if (sort !== undefined && sort !== 'date_desc') {
     res.status(400).json({ error: 'sortが不正です' });
     return;
   }
-  const transactions = await listTransactions(req.householdId!, {
+  const filter = {
     year: year !== undefined ? Number(year) : undefined,
     month: month !== undefined ? Number(month) : undefined,
     categoryId: categoryId !== undefined ? BigInt(String(categoryId)) : undefined,
+    keyword: keyword !== undefined ? String(keyword) : undefined,
     limit: limit !== undefined ? Number(limit) : undefined,
+    offset: offset !== undefined ? Number(offset) : undefined,
     sort: sort as 'date_desc' | undefined,
-  });
+  };
+  const [transactions, total] = await Promise.all([
+    listTransactions(req.householdId!, filter),
+    countTransactions(req.householdId!, filter),
+  ]);
+  res.setHeader('X-Total-Count', String(total));
+  res.setHeader('Access-Control-Expose-Headers', 'X-Total-Count');
   res.json(transactions.map(serializeTransaction));
 });
 
