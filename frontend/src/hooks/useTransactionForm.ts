@@ -5,6 +5,10 @@ import * as transactionsApi from '../api/transactions';
 import { getCurrentUserId } from '../api/client';
 import type { Category } from '../api/categories';
 import type { User } from '../api/users';
+import {
+  EMPTY_SETTLEMENT_FORM_VALUE,
+  type SettlementFormValue,
+} from '../components/SettlementFormSection';
 
 export type TargetSelection = 'self' | 'other' | 'shared';
 
@@ -27,6 +31,7 @@ export function useTransactionForm() {
   const [transactionDate, setTransactionDate] = useState(today());
   const [amount, setAmount] = useState<number | ''>('');
   const [memo, setMemo] = useState('');
+  const [settlement, setSettlement] = useState<SettlementFormValue>(EMPTY_SETTLEMENT_FORM_VALUE);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +71,7 @@ export function useTransactionForm() {
     setTransactionDate(today());
     setAmount('');
     setMemo('');
+    setSettlement(EMPTY_SETTLEMENT_FORM_VALUE);
   }, []);
 
   const save = useCallback(async () => {
@@ -81,6 +87,13 @@ export function useTransactionForm() {
       setError('金額は1円以上で入力してください');
       throw new Error('金額は1円以上で入力してください');
     }
+    if (
+      settlement.settlementPartialAmount !== null &&
+      (settlement.settlementPartialAmount < 0 || settlement.settlementPartialAmount > amount)
+    ) {
+      setError(`半端額は0〜${amount}円の範囲で入力してください`);
+      throw new Error(`半端額は0〜${amount}円の範囲で入力してください`);
+    }
     setSaving(true);
     setError(null);
     try {
@@ -94,6 +107,9 @@ export function useTransactionForm() {
         userId,
         amount,
         memo: memo.trim() || null,
+        settlementPayerUserId: settlement.settlementPayerUserId,
+        settlementBurden: settlement.settlementBurden,
+        settlementPartialAmount: settlement.settlementPartialAmount,
       });
       resetEntry();
     } catch (e) {
@@ -102,7 +118,17 @@ export function useTransactionForm() {
     } finally {
       setSaving(false);
     }
-  }, [currentUserId, categoryId, target, otherUser, transactionDate, amount, memo, resetEntry]);
+  }, [
+    currentUserId,
+    categoryId,
+    target,
+    otherUser,
+    transactionDate,
+    amount,
+    memo,
+    settlement,
+    resetEntry,
+  ]);
 
   return {
     users,
@@ -123,6 +149,8 @@ export function useTransactionForm() {
     setAmount,
     memo,
     setMemo,
+    settlement,
+    setSettlement,
     save,
   };
 }

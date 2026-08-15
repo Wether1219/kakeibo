@@ -7,7 +7,8 @@ import { importCategories } from '../src/migration/importCategories';
 import { importIncomes } from '../src/migration/importIncomes';
 import { importTransactions } from '../src/migration/importTransactions';
 import { importWeeklyBudgets } from '../src/migration/importWeeklyBudgets';
-import { readCellAmount } from '../src/migration/excelUtil';
+import { listMonthSheetNames, readCellAmount, readMonthSheetInfo } from '../src/migration/excelUtil';
+import { calculateSettlement } from '../src/services/settlementService';
 
 const FIXTURE_PATH = path.join(__dirname, 'fixtures', '雛形_家計簿_第1_4版.xlsm');
 
@@ -166,6 +167,49 @@ describe('Excelデータ移行（docs/03_詳細設計書.md 6章）', () => {
         }
       }
     }, 30000);
+
+    // docs/08_割り勘計算 仕様書.md 6章：各月のO52セル（=B87、精算金額。符号は「たいよう→みらの」が正）と
+    // 移行後DBの取引をcalculateSettlement()に渡した結果が一致することを確認する。
+    it('各月のO52セルの値（符号込み）と、移行後DBの取引によるcalculateSettlement()の結果が一致する（テンプレートは精算マーカー未設定のため¥0）', async () => {
+      const wb = XLSX.readFile(FIXTURE_PATH, { cellFormula: true, cellDates: true });
+      const monthSheets = listMonthSheetNames(wb).map((name) => readMonthSheetInfo(wb, name));
+
+      for (const { sheetName, year, month } of monthSheets) {
+        const ws = wb.Sheets[sheetName];
+        const expectedO52 = readCellAmount(ws, 'O52');
+
+        const { start, end } = monthRange(year, month);
+        const transactions = await prisma.transaction.findMany({
+          where: {
+            householdId: TEST_HOUSEHOLD_ID,
+            transactionDate: { gte: start, lt: end },
+            settlementPayerUserId: { not: null },
+          },
+          select: {
+            settlementPayerUserId: true,
+            settlementBurden: true,
+            settlementPartialAmount: true,
+            amount: true,
+          },
+        });
+
+        const result = calculateSettlement(
+          transactions.map((t) => ({
+            settlementPayerUserId: t.settlementPayerUserId,
+            settlementBurden: t.settlementBurden,
+            settlementPartialAmount:
+              t.settlementPartialAmount === null ? null : Number(t.settlementPartialAmount),
+            amount: Number(t.amount),
+          })),
+          // O52の符号は「たいよう→みらの」が正なので、user_id昇順ではなくたいようをA固定で渡す。
+          [USER_TAIYO, USER_MIRANO]
+        );
+        const signedAmount =
+          result.direction === 'NONE' ? 0 : result.direction === 'A_TO_B' ? result.amount : -result.amount;
+
+        expect(signedAmount).toBe(expectedO52);
+      }
+    }, 30000);
   });
 
   // 雛形ファイルは費目名以外ほぼ空欄のテンプレートのため、上記の突合テストは実質「0円同士の一致」の検証に留まる。
@@ -180,16 +224,25 @@ describe('Excelデータ移行（docs/03_詳細設計書.md 6章）', () => {
 
       // 収入: たいよう給与
       ws['E7'] = { t: 'n', v: 300000 };
-      // 固定費取引: たいよう 光熱費 8000円（自分のみ）
+      // 固定費取引: たいよう 光熱費 8000円（自分のみ）。割り勘マーカー☀（たいよう立替・折半）、半端額1000円。
       ws['T6'] = { t: 'n', v: 1 };
       ws['V6'] = { t: 's', v: 'たいよう' };
       ws['W6'] = { t: 's', v: '🔥💡光熱費' };
       ws['X6'] = { t: 'n', v: 8000 };
-      // 変動費取引: 両方（折半）食費 3000円
+      ws['Z6'] = { t: 's', v: '☀' };
+      ws['AA6'] = { t: 'n', v: 1000 };
+      // 変動費取引: みらの 食費 1500円（自分のみ）。割り勘マーカーなし＝精算対象外。
+      ws['T8'] = { t: 'n', v: 3 };
+      ws['V8'] = { t: 's', v: 'みらの' };
+      ws['W8'] = { t: 's', v: '🍙食費' };
+      ws['X8'] = { t: 'n', v: 1500 };
+      // 変動費取引: 両方（折半）食費 3000円。割り勘マーカー♠（みらの立替・全額たいよう負担）、半端額500円。
       ws['T10'] = { t: 'n', v: 5 };
       ws['V10'] = { t: 's', v: '両方' };
       ws['W10'] = { t: 's', v: '🍙食費' };
       ws['X10'] = { t: 'n', v: 3000 };
+      ws['Z10'] = { t: 's', v: '♠' };
+      ws['AA10'] = { t: 'n', v: 500 };
       // 週次予算: 食費 1week 予算5000円
       ws['M17'] = { t: 'n', v: 5000 };
 
@@ -296,6 +349,45 @@ describe('Excelデータ移行（docs/03_詳細設計書.md 6章）', () => {
         },
       });
       expect(Number(weeklyBudget.budgetAmount)).toBe(5000);
+
+      // 割り勘マーカー（Z列・AA列）が1.2節のマッピング通りにsettlement_*カラムへ変換されていることを検証する。
+      const taiyoFixedTx = await prisma.transaction.findFirstOrThrow({
+        where: {
+          householdId: SYNTHETIC_HOUSEHOLD_ID,
+          categoryId: fixedCategory.id,
+          splitType: 'self',
+          userId: SYN_USER_TAIYO,
+          transactionDate: { gte: start, lt: end },
+        },
+      });
+      expect(taiyoFixedTx.settlementPayerUserId).toBe(SYN_USER_TAIYO);
+      expect(taiyoFixedTx.settlementBurden).toBe('half');
+      expect(Number(taiyoFixedTx.settlementPartialAmount)).toBe(1000);
+
+      const sharedVariableTx = await prisma.transaction.findFirstOrThrow({
+        where: {
+          householdId: SYNTHETIC_HOUSEHOLD_ID,
+          categoryId: variableCategory.id,
+          splitType: 'shared',
+          transactionDate: { gte: start, lt: end },
+        },
+      });
+      expect(sharedVariableTx.settlementPayerUserId).toBe(SYN_USER_MIRANO);
+      expect(sharedVariableTx.settlementBurden).toBe('other_full');
+      expect(Number(sharedVariableTx.settlementPartialAmount)).toBe(500);
+
+      const miranoVariableTx = await prisma.transaction.findFirstOrThrow({
+        where: {
+          householdId: SYNTHETIC_HOUSEHOLD_ID,
+          categoryId: variableCategory.id,
+          splitType: 'self',
+          userId: SYN_USER_MIRANO,
+          transactionDate: { gte: start, lt: end },
+        },
+      });
+      expect(miranoVariableTx.settlementPayerUserId).toBeNull();
+      expect(miranoVariableTx.settlementBurden).toBeNull();
+      expect(miranoVariableTx.settlementPartialAmount).toBeNull();
     });
   });
 });

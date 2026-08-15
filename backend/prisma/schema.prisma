@@ -35,6 +35,7 @@ model User {
   colorCode             String?       @map("color_code") @db.VarChar(7)
   transactionsAsUser    Transaction[] @relation("TransactionUser")
   transactionsCreatedBy Transaction[] @relation("TransactionCreatedBy")
+  transactionsAsSettlementPayer Transaction[] @relation("TransactionSettlementPayer")
   incomes               Income[]
   preSavings            PreSaving[]
   auditLogs             AuditLog[]
@@ -76,6 +77,11 @@ enum SplitType {
   shared
 }
 
+enum SettlementBurden {
+  half
+  other_full
+}
+
 model Transaction {
   id              BigInt    @id @default(autoincrement())
   householdId     BigInt    @map("household_id")
@@ -96,11 +102,17 @@ model Transaction {
   // 定期取引から自動生成された場合の生成元（当月分の二重生成防止に使う）。手入力の場合はNULL。
   recurringTransactionId BigInt?               @map("recurring_transaction_id")
   recurringTransaction   RecurringTransaction?  @relation(fields: [recurringTransactionId], references: [id])
+  // 割り勘・立て替え精算用（docs/08_割り勘計算 仕様書.md 2章）。NULL=精算対象外。
+  settlementPayerUserId    BigInt?           @map("settlement_payer_user_id")
+  settlementPayer          User?             @relation("TransactionSettlementPayer", fields: [settlementPayerUserId], references: [id])
+  settlementBurden         SettlementBurden? @map("settlement_burden")
+  settlementPartialAmount  Decimal?          @map("settlement_partial_amount") @db.Decimal(10, 0)
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   @@index([householdId, transactionDate])
   @@index([householdId, categoryId])
+  @@index([householdId, settlementPayerUserId])
   @@map("transactions")
 }
 

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { SplitType } from '@prisma/client';
+import { SettlementBurden, SplitType } from '@prisma/client';
 import { HouseholdRequest, authMiddleware } from '../middlewares/household';
 import {
   TransactionInput,
@@ -14,9 +14,14 @@ import {
 import { recordAuditLog } from '../services/auditLogService';
 
 const SPLIT_TYPES = Object.values(SplitType);
+const SETTLEMENT_BURDENS = Object.values(SettlementBurden);
 
 function isSplitType(value: unknown): value is SplitType {
   return typeof value === 'string' && (SPLIT_TYPES as string[]).includes(value);
+}
+
+function isSettlementBurden(value: unknown): value is SettlementBurden {
+  return typeof value === 'string' && (SETTLEMENT_BURDENS as string[]).includes(value);
 }
 
 function isPositiveIntString(value: unknown): value is string {
@@ -33,6 +38,9 @@ function serializeTransaction(transaction: {
   amount: { toString(): string };
   memo: string | null;
   otherPaidAmount: { toString(): string } | null;
+  settlementPayerUserId: bigint | null;
+  settlementBurden: SettlementBurden | null;
+  settlementPartialAmount: { toString(): string } | null;
   createdBy: bigint;
   createdAt: Date;
   updatedAt: Date;
@@ -48,6 +56,12 @@ function serializeTransaction(transaction: {
     memo: transaction.memo,
     otherPaidAmount:
       transaction.otherPaidAmount === null ? null : Number(transaction.otherPaidAmount.toString()),
+    settlementPayerUserId: transaction.settlementPayerUserId?.toString() ?? null,
+    settlementBurden: transaction.settlementBurden,
+    settlementPartialAmount:
+      transaction.settlementPartialAmount === null
+        ? null
+        : Number(transaction.settlementPartialAmount.toString()),
     createdBy: transaction.createdBy.toString(),
     createdAt: transaction.createdAt.toISOString(),
     updatedAt: transaction.updatedAt.toISOString(),
@@ -55,8 +69,18 @@ function serializeTransaction(transaction: {
 }
 
 function parseTransactionBody(body: unknown): TransactionInput | null {
-  const { transactionDate, categoryId, splitType, userId, amount, memo, otherPaidAmount } =
-    (body as Record<string, unknown>) ?? {};
+  const {
+    transactionDate,
+    categoryId,
+    splitType,
+    userId,
+    amount,
+    memo,
+    otherPaidAmount,
+    settlementPayerUserId,
+    settlementBurden,
+    settlementPartialAmount,
+  } = (body as Record<string, unknown>) ?? {};
   if (
     typeof transactionDate !== 'string' ||
     !isPositiveIntString(String(categoryId)) ||
@@ -78,6 +102,27 @@ function parseTransactionBody(body: unknown): TransactionInput | null {
   ) {
     return null;
   }
+  if (
+    settlementPayerUserId !== undefined &&
+    settlementPayerUserId !== null &&
+    !isPositiveIntString(String(settlementPayerUserId))
+  ) {
+    return null;
+  }
+  if (
+    settlementBurden !== undefined &&
+    settlementBurden !== null &&
+    !isSettlementBurden(settlementBurden)
+  ) {
+    return null;
+  }
+  if (
+    settlementPartialAmount !== undefined &&
+    settlementPartialAmount !== null &&
+    typeof settlementPartialAmount !== 'number'
+  ) {
+    return null;
+  }
   return {
     transactionDate,
     categoryId: BigInt(categoryId as string | number),
@@ -86,6 +131,12 @@ function parseTransactionBody(body: unknown): TransactionInput | null {
     amount,
     memo: (memo as string | undefined) ?? null,
     otherPaidAmount: (otherPaidAmount as number | undefined) ?? null,
+    settlementPayerUserId:
+      settlementPayerUserId !== undefined && settlementPayerUserId !== null
+        ? BigInt(settlementPayerUserId as string | number)
+        : null,
+    settlementBurden: (settlementBurden as SettlementBurden | undefined) ?? null,
+    settlementPartialAmount: (settlementPartialAmount as number | undefined) ?? null,
   };
 }
 

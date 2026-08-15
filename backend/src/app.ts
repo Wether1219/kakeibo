@@ -14,6 +14,7 @@ import { assetsRouter } from './routes/assets';
 import { assetBalancesRouter } from './routes/assetBalances';
 import { recurringTransactionsRouter } from './routes/recurringTransactions';
 import { savingsGoalsRouter } from './routes/savingsGoals';
+import { settlementsRouter } from './routes/settlements';
 
 export function createApp() {
   const app = express();
@@ -33,5 +34,6 @@ export function createApp() {
   app.use('/api/v1/import', importRouter);
   app.use('/api/v1/recurring-transactions', recurringTransactionsRouter);
   app.use('/api/v1/savings-goals', savingsGoalsRouter);
+  app.use('/api/v1/settlements', settlementsRouter);
   return app;
 }
