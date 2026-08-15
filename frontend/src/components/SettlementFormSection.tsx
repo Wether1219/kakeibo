@@ -107,10 +107,11 @@ export function SettlementFormSection({ value, onChange, users, amount }: Props)
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+              <label htmlFor="settlement-partial-amount" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
                 相手がその場で払った額（任意）
               </label>
               <input
+                id="settlement-partial-amount"
                 type="number"
                 inputMode="numeric"
                 min={0}

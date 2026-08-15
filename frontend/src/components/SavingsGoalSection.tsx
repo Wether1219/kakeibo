@@ -5,6 +5,7 @@ import {
   deactivateSavingsGoal,
   fetchSavingsGoals,
 } from '../api/savingsGoals';
+import { ErrorMessage, LoadingMessage } from './StatusMessage';
 
 interface Props {
   // 選択中の年における世帯全体の貯金実績（年間収支可視化の集計を流用、API追加なし）。
@@ -64,8 +65,8 @@ export function SavingsGoalSection({ actualSaving }: Props) {
     <section>
       <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">貯金目標</h2>
       <div className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-4">
-        {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {loading && <LoadingMessage />}
+        {error && <ErrorMessage>{error}</ErrorMessage>}
 
         {!loading &&
           goals.map((goal) => {
@@ -110,8 +111,9 @@ export function SavingsGoalSection({ actualSaving }: Props) {
 
         <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 items-end pt-2 border-t border-gray-100 dark:border-gray-700">
           <div className="flex-1 min-w-[8rem]">
-            <label className="block text-xs text-gray-500 dark:text-gray-400">目標名</label>
+            <label htmlFor="savings-goal-name" className="block text-xs text-gray-500 dark:text-gray-400">目標名</label>
             <input
+              id="savings-goal-name"
               className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1 text-sm"
               value={name}
               placeholder="例：旅行資金"
@@ -119,8 +121,9 @@ export function SavingsGoalSection({ actualSaving }: Props) {
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400">目標額</label>
+            <label htmlFor="savings-goal-target" className="block text-xs text-gray-500 dark:text-gray-400">目標額</label>
             <input
+              id="savings-goal-target"
               type="number"
               min={1}
               className="w-28 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1 text-sm text-right"

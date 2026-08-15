@@ -119,8 +119,9 @@ export function TransactionInput() {
 
           {/* 金額（テンキー入力、タップ数にはカウントしない） */}
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">金額</label>
+            <label htmlFor="tx-input-amount" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">金額</label>
             <input
+              id="tx-input-amount"
               type="number"
               inputMode="numeric"
               min={1}
@@ -138,8 +139,9 @@ export function TransactionInput() {
             </summary>
             <div className="mt-2 space-y-3">
               <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">日付</label>
+                <label htmlFor="tx-input-date" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">日付</label>
                 <input
+                  id="tx-input-date"
                   type="date"
                   className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
                   value={transactionDate}
@@ -147,8 +149,9 @@ export function TransactionInput() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">メモ</label>
+                <label htmlFor="tx-input-memo" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">メモ</label>
                 <input
+                  id="tx-input-memo"
                   type="text"
                   className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
                   value={memo}

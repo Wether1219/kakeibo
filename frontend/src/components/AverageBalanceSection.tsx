@@ -88,7 +88,7 @@ export function AverageBalanceSection({ members }: Props) {
               </div>
             </dl>
             <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-between text-sm bg-amber-50 dark:bg-amber-950 -mx-4 -mb-4 px-4 py-2 rounded-b">
-              <dt className="text-gray-500 dark:text-gray-400">💰賞与（年間合計÷2）</dt>
+              <dt className="text-gray-500 dark:text-gray-400"><span aria-hidden="true">💰</span>賞与（年間合計÷2）</dt>
               <dd className="font-medium">{formatYen(m.bonusAverage)}</dd>
             </div>
           </div>

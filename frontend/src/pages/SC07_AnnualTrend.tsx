@@ -10,6 +10,7 @@ import {
 import { YearSelector } from '../components/YearSelector';
 import { useAnnualSummary } from '../hooks/useAnnualSummary';
 import { useYearParam } from '../hooks/useYearMonthParams';
+import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 
 const MONTH_LABELS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 const SERIES_COLORS = ['#4C6EF5', '#F76707', '#12B886', '#E64980'];
@@ -101,8 +102,8 @@ export function SC07_AnnualTrend() {
 
       <CategoryTypeTab value={tab} onChange={setTab} />
 
-      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {loading && <LoadingMessage />}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
 
       {!loading && !error && (
         <>
@@ -116,6 +117,7 @@ export function SC07_AnnualTrend() {
             <div className="flex flex-wrap items-center gap-4">
               {!isSavingsTotal && (
                 <select
+                  aria-label="費目"
                   className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1 text-sm"
                   value={selectedCategoryName}
                   onChange={(e) => setSelectedCategoryName(e.target.value)}

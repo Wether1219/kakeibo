@@ -6,6 +6,7 @@ import { SavingsGoalSection } from '../components/SavingsGoalSection';
 import { YearSelector } from '../components/YearSelector';
 import { useVisualizationSummary } from '../hooks/useVisualizationSummary';
 import { useYearParam } from '../hooks/useYearMonthParams';
+import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 
 export function SC08_Visualization() {
   const [year, setYear] = useYearParam();
@@ -16,8 +17,8 @@ export function SC08_Visualization() {
     <div className="max-w-4xl mx-auto p-4 space-y-6">
       <YearSelector year={year} onChange={setYear} />
 
-      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {loading && <LoadingMessage />}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
 
       {!loading && !error && (
         <>

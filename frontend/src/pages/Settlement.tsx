@@ -3,6 +3,7 @@ import { SettlementBreakdownTable } from '../components/SettlementBreakdownTable
 import { SettlementResultCard } from '../components/SettlementResultCard';
 import { useYearMonthParams } from '../hooks/useYearMonthParams';
 import { useSettlementSummary } from '../hooks/useSettlementSummary';
+import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 
 export function Settlement() {
   const { year, month, setYearMonth } = useYearMonthParams();
@@ -13,8 +14,8 @@ export function Settlement() {
       <h1 className="text-xl font-bold text-center">精算</h1>
       <MonthSelector year={year} month={month} onChange={setYearMonth} />
 
-      {loading && <p className="text-sm text-center text-gray-400 dark:text-gray-500">読み込み中...</p>}
-      {error && <p className="text-sm text-center text-red-600 dark:text-red-400">{error}</p>}
+      {loading && <LoadingMessage className="text-center" />}
+      {error && <ErrorMessage className="text-center">{error}</ErrorMessage>}
 
       {summary && !loading && !error && (
         <>

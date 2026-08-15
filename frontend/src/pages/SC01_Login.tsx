@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../api/auth';
+import { ErrorMessage } from '../components/StatusMessage';
 
 // SC01（ログイン画面）：設計書に画面仕様の記載がないためシンプルなフォームで実装。
 export function SC01_Login() {
@@ -29,8 +30,9 @@ export function SC01_Login() {
       <h1 className="text-xl font-bold mb-6 text-center">家計簿ログイン</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">メールアドレス</label>
+          <label htmlFor="login-email" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">メールアドレス</label>
           <input
+            id="login-email"
             type="email"
             required
             autoComplete="email"
@@ -40,8 +42,9 @@ export function SC01_Login() {
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">パスワード</label>
+          <label htmlFor="login-password" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">パスワード</label>
           <input
+            id="login-password"
             type="password"
             required
             autoComplete="current-password"
@@ -50,7 +53,7 @@ export function SC01_Login() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {error && <ErrorMessage>{error}</ErrorMessage>}
         <button
           type="submit"
           disabled={submitting}
