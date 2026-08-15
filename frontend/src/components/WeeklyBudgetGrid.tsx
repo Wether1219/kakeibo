@@ -27,7 +27,7 @@ export function WeeklyBudgetGrid({ categories, weeks, budgets, actuals, onBudget
           <tr className="bg-gray-50 dark:bg-gray-800">
             {weeks.map((w) => (
               <Fragment key={w}>
-                <th className="px-3 py-1 text-right border-b border-gray-200 dark:border-gray-700 font-normal text-xs text-gray-500 dark:text-gray-400">
+                <th className="px-3 py-1 text-right border-b border-gray-200 dark:border-gray-700 font-normal text-xs text-gray-500 dark:text-gray-400" style={{ paddingRight: '3em' }}>
                   予算
                 </th>
                 <th className="px-3 py-1 text-right border-b border-gray-200 dark:border-gray-700 font-normal text-xs text-gray-500 dark:text-gray-400">

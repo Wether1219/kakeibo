@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MonthSelector } from '../components/MonthSelector';
 import { EditTransactionModal } from '../components/EditTransactionModal';
+import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 import { TRANSACTION_PAGE_SIZE, useTransactionList } from '../hooks/useTransactionList';
 import { useYearMonthParams } from '../hooks/useYearMonthParams';
 import type { Transaction } from '../api/transactions';
@@ -84,9 +85,9 @@ export function SC04_TransactionList() {
         />
       </div>
 
-      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {actionError && <p className="text-sm text-red-600 dark:text-red-400">{actionError}</p>}
+      {loading && <LoadingMessage />}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
+      {actionError && <ErrorMessage>{actionError}</ErrorMessage>}
 
       {!loading && (
         <>

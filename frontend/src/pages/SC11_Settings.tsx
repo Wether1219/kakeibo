@@ -4,6 +4,7 @@ import { AuditLog, fetchAuditLogs } from '../api/auditLogs';
 import { downloadExport } from '../api/export';
 import { ImportSummary, importExcel } from '../api/import';
 import { RecurringTransactionsPanel } from '../components/RecurringTransactionsPanel';
+import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 
 type SettingsTab = 'members' | 'history' | 'export' | 'import' | 'recurring';
 
@@ -142,8 +143,8 @@ export function SC11_Settings() {
         ))}
       </div>
 
-      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {loading && <LoadingMessage />}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
 
       {!loading && tab === 'members' && (
         <div className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
@@ -186,7 +187,7 @@ export function SC11_Settings() {
       {!loading && tab === 'export' && (
         <div className="space-y-3">
           <p className="text-sm text-gray-500 dark:text-gray-400">世帯のデータをファイルとしてダウンロードできます。</p>
-          {exportError && <p className="text-sm text-red-600 dark:text-red-400">{exportError}</p>}
+          {exportError && <ErrorMessage>{exportError}</ErrorMessage>}
           <div className="flex gap-2">
             <button
               type="button"
@@ -222,7 +223,7 @@ export function SC11_Settings() {
             onChange={handleFileSelect}
             className="text-sm"
           />
-          {importError && <p className="text-sm text-red-600 dark:text-red-400">{importError}</p>}
+          {importError && <ErrorMessage>{importError}</ErrorMessage>}
           <div>
             <button
               type="button"

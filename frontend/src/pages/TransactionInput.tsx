@@ -3,6 +3,7 @@ import { useTransactionForm } from '../hooks/useTransactionForm';
 import type { TargetSelection } from '../hooks/useTransactionForm';
 import type { Category } from '../api/categories';
 import { SettlementFormSection } from '../components/SettlementFormSection';
+import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 
 // SC03（取引入力画面）：スマホでの入力を①費目→②対象者→③保存の3タップで完了させる
 // （金額はテンキー入力のためタップ数にカウントしない）。
@@ -81,7 +82,7 @@ export function TransactionInput() {
     <div className="max-w-md mx-auto p-4">
       <h1 className="text-xl font-bold mb-4">取引入力</h1>
 
-      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
+      {loading && <LoadingMessage />}
 
       {!loading && (
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -159,7 +160,7 @@ export function TransactionInput() {
 
           <SettlementFormSection value={settlement} onChange={setSettlement} users={users} amount={amount} />
 
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && <ErrorMessage>{error}</ErrorMessage>}
 
           {/* ③保存（1タップ） */}
           <button
@@ -169,7 +170,11 @@ export function TransactionInput() {
           >
             {saving ? '保存中...' : '保存'}
           </button>
-          {saveMessage && <p className="text-sm text-green-600 dark:text-green-400 text-center">{saveMessage}</p>}
+          {saveMessage && (
+            <p role="status" aria-live="polite" className="text-sm text-green-600 dark:text-green-400 text-center">
+              {saveMessage}
+            </p>
+          )}
         </form>
       )}
     </div>

@@ -7,6 +7,8 @@ import {
   Tooltip,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
+import { useTheme } from '../../hooks/useTheme';
+import { getChartThemeColors } from './chartTheme';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -22,6 +24,9 @@ interface Props {
 }
 
 export function StackedBarChart({ labels, datasets }: Props) {
+  const { theme } = useTheme();
+  const { textColor, gridColor } = getChartThemeColors(theme);
+
   return (
     <Bar
       data={{
@@ -32,11 +37,11 @@ export function StackedBarChart({ labels, datasets }: Props) {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'bottom' },
+          legend: { position: 'bottom', labels: { color: textColor } },
         },
         scales: {
-          x: { stacked: true },
-          y: { stacked: true },
+          x: { stacked: true, ticks: { color: textColor }, grid: { color: gridColor } },
+          y: { stacked: true, ticks: { color: textColor }, grid: { color: gridColor } },
         },
       }}
     />

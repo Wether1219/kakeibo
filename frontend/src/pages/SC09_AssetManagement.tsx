@@ -5,6 +5,7 @@ import { AssetBalanceTable } from '../components/AssetBalanceTable';
 import { AssetGroupTab, AssetGroupTabValue } from '../components/AssetGroupTab';
 import { LineChart } from '../components/charts/LineChart';
 import { NetWorthSummary } from '../components/NetWorthSummary';
+import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 import { YearSelector } from '../components/YearSelector';
 import { useAssetBalances } from '../hooks/useAssetBalances';
 import { useYearParam } from '../hooks/useYearMonthParams';
@@ -106,9 +107,9 @@ export function SC09_AssetManagement() {
 
       <AssetGroupTab value={group} onChange={setGroup} />
 
-      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {deleteError && <p className="text-sm text-red-600 dark:text-red-400">{deleteError}</p>}
+      {loading && <LoadingMessage />}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
+      {deleteError && <ErrorMessage>{deleteError}</ErrorMessage>}
 
       {!loading && (
         <>

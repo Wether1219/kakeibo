@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Category, CategoryType, fetchCategories } from '../api/categories';
 import { User, fetchUsers } from '../api/users';
 import { Transaction, TransactionInput, updateTransaction } from '../api/transactions';
+import { useModalA11y } from '../hooks/useModalA11y';
+import { ErrorMessage, LoadingMessage } from './StatusMessage';
 
 type ExpenseType = Extract<CategoryType, 'fixed_expense' | 'variable_expense'>;
 
@@ -38,6 +40,8 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
 
   // 対象者が「両方」または「自分以外」の時のみ、相手がその場で直接払った金額を入力できる。
   const showOtherPaidAmount = targetKey === 'shared' || (targetKey !== '' && targetKey !== transaction.createdBy);
+
+  const dialogRef = useModalA11y(onClose, !loading);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,9 +118,18 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded shadow-lg w-full max-w-sm p-4 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-lg font-bold mb-4">取引を編集</h2>
-        {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-transaction-title"
+        tabIndex={-1}
+        className="bg-white dark:bg-gray-800 rounded shadow-lg w-full max-w-sm p-4 max-h-[90vh] overflow-y-auto"
+      >
+        <h2 id="edit-transaction-title" className="text-lg font-bold mb-4">
+          取引を編集
+        </h2>
+        {loading && <LoadingMessage />}
         {!loading && (
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
@@ -238,7 +251,7 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
               />
             </div>
 
-            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+            {error && <ErrorMessage>{error}</ErrorMessage>}
 
             <div className="flex justify-end gap-2 pt-2">
               <button
