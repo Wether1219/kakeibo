@@ -153,8 +153,9 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">費目</label>
+              <label htmlFor="edit-tx-category" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">費目</label>
               <select
+                id="edit-tx-category"
                 className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-2 text-base"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
@@ -201,10 +202,11 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
 
             {showOtherPaidAmount && (
               <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <label htmlFor="edit-tx-other-paid" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
                   相手がその場で払った金額（任意）
                 </label>
                 <input
+                  id="edit-tx-other-paid"
                   type="number"
                   inputMode="numeric"
                   min={0}
@@ -219,8 +221,9 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
             )}
 
             <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">金額</label>
+              <label htmlFor="edit-tx-amount" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">金額</label>
               <input
+                id="edit-tx-amount"
                 type="number"
                 inputMode="numeric"
                 min={1}
@@ -232,8 +235,9 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">日付</label>
+              <label htmlFor="edit-tx-date" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">日付</label>
               <input
+                id="edit-tx-date"
                 type="date"
                 className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
                 value={transactionDate}
@@ -242,8 +246,9 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">メモ</label>
+              <label htmlFor="edit-tx-memo" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">メモ</label>
               <input
+                id="edit-tx-memo"
                 type="text"
                 className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
                 value={memo}

@@ -73,8 +73,9 @@ export function AddAssetModal({ assetGroup, onClose, onCreated }: Props) {
         </h2>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400">名称</label>
+            <label htmlFor="add-asset-name" className="block text-xs text-gray-500 dark:text-gray-400">名称</label>
             <input
+              id="add-asset-name"
               type="text"
               className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
               value={name}
@@ -82,8 +83,9 @@ export function AddAssetModal({ assetGroup, onClose, onCreated }: Props) {
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400">名義</label>
+            <label htmlFor="add-asset-owner" className="block text-xs text-gray-500 dark:text-gray-400">名義</label>
             <select
+              id="add-asset-owner"
               className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
               value={ownerUserId}
               onChange={(e) => setOwnerUserId(e.target.value)}
@@ -96,8 +98,9 @@ export function AddAssetModal({ assetGroup, onClose, onCreated }: Props) {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400">詳細</label>
+            <label htmlFor="add-asset-detail" className="block text-xs text-gray-500 dark:text-gray-400">詳細</label>
             <input
+              id="add-asset-detail"
               type="text"
               className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
               value={detail}
@@ -105,8 +108,9 @@ export function AddAssetModal({ assetGroup, onClose, onCreated }: Props) {
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400">用途</label>
+            <label htmlFor="add-asset-purpose" className="block text-xs text-gray-500 dark:text-gray-400">用途</label>
             <input
+              id="add-asset-purpose"
               type="text"
               className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
               value={purpose}
@@ -114,8 +118,9 @@ export function AddAssetModal({ assetGroup, onClose, onCreated }: Props) {
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400">積立額</label>
+            <label htmlFor="add-asset-contribution" className="block text-xs text-gray-500 dark:text-gray-400">積立額</label>
             <input
+              id="add-asset-contribution"
               type="number"
               className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
               value={monthlyContribution}

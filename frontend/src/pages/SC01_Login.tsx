@@ -30,8 +30,9 @@ export function SC01_Login() {
       <h1 className="text-xl font-bold mb-6 text-center">家計簿ログイン</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">メールアドレス</label>
+          <label htmlFor="login-email" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">メールアドレス</label>
           <input
+            id="login-email"
             type="email"
             required
             autoComplete="email"
@@ -41,8 +42,9 @@ export function SC01_Login() {
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">パスワード</label>
+          <label htmlFor="login-password" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">パスワード</label>
           <input
+            id="login-password"
             type="password"
             required
             autoComplete="current-password"

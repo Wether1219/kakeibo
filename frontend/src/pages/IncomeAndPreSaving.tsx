@@ -43,8 +43,9 @@ export function IncomeAndPreSaving() {
 
       <div className="flex items-end gap-2 mb-6">
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400">年</label>
+          <label htmlFor="income-year" className="block text-xs text-gray-500 dark:text-gray-400">年</label>
           <input
+            id="income-year"
             type="number"
             className="w-24 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
             value={year}
@@ -52,8 +53,9 @@ export function IncomeAndPreSaving() {
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400">月</label>
+          <label htmlFor="income-month" className="block text-xs text-gray-500 dark:text-gray-400">月</label>
           <select
+            id="income-month"
             className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
             value={month}
             onChange={(e) => setMonth(Number(e.target.value))}

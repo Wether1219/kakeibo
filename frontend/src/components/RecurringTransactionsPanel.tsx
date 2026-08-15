@@ -105,8 +105,9 @@ export function RecurringTransactionsPanel() {
 
       <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 items-end border-b border-gray-100 dark:border-gray-700 pb-4">
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400">費目</label>
+          <label htmlFor="recurring-category" className="block text-xs text-gray-500 dark:text-gray-400">費目</label>
           <select
+            id="recurring-category"
             className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
@@ -119,8 +120,9 @@ export function RecurringTransactionsPanel() {
           </select>
         </div>
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400">対象者</label>
+          <label htmlFor="recurring-target" className="block text-xs text-gray-500 dark:text-gray-400">対象者</label>
           <select
+            id="recurring-target"
             className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
             value={targetKey}
             onChange={(e) => setTargetKey(e.target.value)}
@@ -134,8 +136,9 @@ export function RecurringTransactionsPanel() {
           </select>
         </div>
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400">金額</label>
+          <label htmlFor="recurring-amount" className="block text-xs text-gray-500 dark:text-gray-400">金額</label>
           <input
+            id="recurring-amount"
             type="number"
             min={1}
             className="w-24 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1 text-right"
@@ -144,8 +147,9 @@ export function RecurringTransactionsPanel() {
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400">毎月</label>
+          <label htmlFor="recurring-day" className="block text-xs text-gray-500 dark:text-gray-400">毎月</label>
           <input
+            id="recurring-day"
             type="number"
             min={1}
             max={28}
@@ -156,8 +160,9 @@ export function RecurringTransactionsPanel() {
           <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">日</span>
         </div>
         <div className="flex-1 min-w-[8rem]">
-          <label className="block text-xs text-gray-500 dark:text-gray-400">メモ</label>
+          <label htmlFor="recurring-memo" className="block text-xs text-gray-500 dark:text-gray-400">メモ</label>
           <input
+            id="recurring-memo"
             className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}

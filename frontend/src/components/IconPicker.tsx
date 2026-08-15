@@ -56,6 +56,7 @@ export function IconPicker({ value, onChange }: Props) {
             </div>
             <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex items-center gap-1">
               <input
+                aria-label="アイコンを自由入力"
                 className="w-16 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-1 py-0.5 text-center text-sm"
                 placeholder="自由入力"
                 value={custom}

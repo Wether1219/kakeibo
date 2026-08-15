@@ -111,8 +111,9 @@ export function SavingsGoalSection({ actualSaving }: Props) {
 
         <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 items-end pt-2 border-t border-gray-100 dark:border-gray-700">
           <div className="flex-1 min-w-[8rem]">
-            <label className="block text-xs text-gray-500 dark:text-gray-400">目標名</label>
+            <label htmlFor="savings-goal-name" className="block text-xs text-gray-500 dark:text-gray-400">目標名</label>
             <input
+              id="savings-goal-name"
               className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1 text-sm"
               value={name}
               placeholder="例：旅行資金"
@@ -120,8 +121,9 @@ export function SavingsGoalSection({ actualSaving }: Props) {
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400">目標額</label>
+            <label htmlFor="savings-goal-target" className="block text-xs text-gray-500 dark:text-gray-400">目標額</label>
             <input
+              id="savings-goal-target"
               type="number"
               min={1}
               className="w-28 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1 text-sm text-right"

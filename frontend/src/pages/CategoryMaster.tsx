@@ -48,8 +48,9 @@ export function CategoryMaster() {
 
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 mb-6 items-end">
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400">区分</label>
+          <label htmlFor="category-master-type" className="block text-xs text-gray-500 dark:text-gray-400">区分</label>
           <select
+            id="category-master-type"
             className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
             value={newType}
             onChange={(e) => setNewType(e.target.value as CategoryType)}
@@ -66,8 +67,9 @@ export function CategoryMaster() {
           <IconPicker value={newIcon} onChange={setNewIcon} />
         </div>
         <div className="flex-1 min-w-[8rem]">
-          <label className="block text-xs text-gray-500 dark:text-gray-400">費目名</label>
+          <label htmlFor="category-master-name" className="block text-xs text-gray-500 dark:text-gray-400">費目名</label>
           <input
+            id="category-master-name"
             className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}

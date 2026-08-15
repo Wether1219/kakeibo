@@ -117,6 +117,7 @@ export function SC07_AnnualTrend() {
             <div className="flex flex-wrap items-center gap-4">
               {!isSavingsTotal && (
                 <select
+                  aria-label="費目"
                   className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1 text-sm"
                   value={selectedCategoryName}
                   onChange={(e) => setSelectedCategoryName(e.target.value)}
