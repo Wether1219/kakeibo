@@ -217,6 +217,49 @@ describe('/api/v1/transactions', () => {
     expect(categoryNameRes.headers['x-total-count']).toBe('2');
   });
 
+  it('targetで対象者（共通/個人）を絞り込める', async () => {
+    await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ splitType: 'self', userId: USER_ID.toString(), memo: '自分の分' }));
+    await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(
+        baseBody({
+          splitType: 'self',
+          userId: SETTLEMENT_PARTNER_USER_ID.toString(),
+          memo: '相手の分',
+        })
+      );
+    await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ splitType: 'shared', userId: USER_ID.toString(), memo: '共通の分' }));
+
+    const sharedRes = await request(app)
+      .get('/api/v1/transactions?target=shared')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+    expect(sharedRes.status).toBe(200);
+    expect(sharedRes.body).toHaveLength(1);
+    expect(sharedRes.body[0].memo).toBe('共通の分');
+    expect(sharedRes.headers['x-total-count']).toBe('1');
+
+    const userRes = await request(app)
+      .get(`/api/v1/transactions?target=${USER_ID.toString()}`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+    expect(userRes.status).toBe(200);
+    expect(userRes.body).toHaveLength(1);
+    expect(userRes.body[0].memo).toBe('自分の分');
+  });
+
+  it('不正なtargetは400', async () => {
+    const res = await request(app)
+      .get('/api/v1/transactions?target=abc')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+    expect(res.status).toBe(400);
+  });
+
   it('offsetでページネーションでき、X-Total-Countはoffset適用前の全件数を返す', async () => {
     await request(app)
       .post('/api/v1/transactions')

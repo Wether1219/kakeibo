@@ -144,7 +144,7 @@ export const transactionsRouter = Router();
 transactionsRouter.use(authMiddleware);
 
 transactionsRouter.get('/', async (req: HouseholdRequest, res) => {
-  const { year, month, categoryId, keyword, limit, offset, sort } = req.query;
+  const { year, month, categoryId, keyword, target, limit, offset, sort } = req.query;
   if (year !== undefined && !/^\d+$/.test(String(year))) {
     res.status(400).json({ error: 'yearが不正です' });
     return;
@@ -155,6 +155,11 @@ transactionsRouter.get('/', async (req: HouseholdRequest, res) => {
   }
   if (categoryId !== undefined && !/^\d+$/.test(String(categoryId))) {
     res.status(400).json({ error: 'categoryIdが不正です' });
+    return;
+  }
+  // target: 対象者フィルタ。'shared'（共通）または対象ユーザーのuserId（自分/相手）を指定する。
+  if (target !== undefined && target !== 'shared' && !/^\d+$/.test(String(target))) {
+    res.status(400).json({ error: 'targetが不正です' });
     return;
   }
   if (limit !== undefined && !/^[1-9]\d*$/.test(String(limit))) {
@@ -174,6 +179,8 @@ transactionsRouter.get('/', async (req: HouseholdRequest, res) => {
     month: month !== undefined ? Number(month) : undefined,
     categoryId: categoryId !== undefined ? BigInt(String(categoryId)) : undefined,
     keyword: keyword !== undefined ? String(keyword) : undefined,
+    splitType: target === 'shared' ? ('shared' as SplitType) : target !== undefined ? ('self' as SplitType) : undefined,
+    userId: target !== undefined && target !== 'shared' ? BigInt(String(target)) : undefined,
     limit: limit !== undefined ? Number(limit) : undefined,
     offset: offset !== undefined ? Number(offset) : undefined,
     sort: sort as 'date_desc' | undefined,

@@ -38,6 +38,8 @@ export interface TransactionListParams {
   year?: number;
   month?: number;
   categoryId?: string;
+  // 対象者フィルタ。'shared'（共通）または対象ユーザーのuserIdを指定する。
+  target?: string;
   limit?: number;
   sort?: 'date_desc';
 }
@@ -47,6 +49,7 @@ function buildTransactionQuery(params: TransactionListParams & { keyword?: strin
   if (params.year !== undefined) query.set('year', String(params.year));
   if (params.month !== undefined) query.set('month', String(params.month));
   if (params.categoryId !== undefined) query.set('categoryId', params.categoryId);
+  if (params.target !== undefined && params.target !== '') query.set('target', params.target);
   if (params.keyword !== undefined && params.keyword !== '') query.set('keyword', params.keyword);
   if (params.limit !== undefined) query.set('limit', String(params.limit));
   if (params.offset !== undefined) query.set('offset', String(params.offset));

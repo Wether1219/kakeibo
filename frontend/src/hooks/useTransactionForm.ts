@@ -67,7 +67,6 @@ export function useTransactionForm() {
   const otherUser = users.find((u) => u.id !== currentUserId) ?? null;
 
   const resetEntry = useCallback(() => {
-    setTarget('self');
     setTransactionDate(today());
     setAmount('');
     setMemo('');

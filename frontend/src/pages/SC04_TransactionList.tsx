@@ -19,6 +19,7 @@ function formatDate(dateStr: string): string {
 export function SC04_TransactionList() {
   const { year, month, setYearMonth } = useYearMonthParams();
   const [categoryId, setCategoryId] = useState('');
+  const [target, setTarget] = useState('');
   const [keywordInput, setKeywordInput] = useState('');
   const [keyword, setKeyword] = useState('');
   const [page, setPage] = useState(0);
@@ -34,10 +35,10 @@ export function SC04_TransactionList() {
   // 絞り込み条件が変わったら1ページ目に戻す。
   useEffect(() => {
     setPage(0);
-  }, [year, month, categoryId, keyword]);
+  }, [year, month, categoryId, target, keyword]);
 
   const { transactions, total, categories, users, loading, error, reload, removeTransaction } =
-    useTransactionList(year, month, categoryId, keyword, page);
+    useTransactionList(year, month, categoryId, target, keyword, page);
 
   const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   // 絞り込みプルダウンには、取引で実際に使われうる区分（固定費/変動費）かつ有効な費目のみ表示する
@@ -82,6 +83,19 @@ export function SC04_TransactionList() {
           {filterableCategories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.icon ?? ''} {c.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1.5 text-sm flex-1"
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+        >
+          <option value="">すべての対象者</option>
+          <option value="shared">共通</option>
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.displayName}
             </option>
           ))}
         </select>

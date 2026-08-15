@@ -69,6 +69,8 @@ export interface TransactionListFilter {
   month?: number;
   categoryId?: bigint;
   keyword?: string;
+  splitType?: SplitType;
+  userId?: bigint;
   limit?: number;
   offset?: number;
   sort?: TransactionSort;
@@ -94,6 +96,12 @@ function buildWhere(householdId: bigint, filter: TransactionListFilter): Prisma.
       { category: { name: { contains: filter.keyword } } },
     ];
   }
+  if (filter.splitType !== undefined) {
+    where.splitType = filter.splitType;
+  }
+  if (filter.userId !== undefined) {
+    where.userId = filter.userId;
+  }
   return where;
 }
 
@@ -108,7 +116,7 @@ export async function listTransactions(householdId: bigint, filter: TransactionL
 
 export async function countTransactions(
   householdId: bigint,
-  filter: Pick<TransactionListFilter, 'year' | 'month' | 'categoryId' | 'keyword'>
+  filter: Pick<TransactionListFilter, 'year' | 'month' | 'categoryId' | 'keyword' | 'splitType' | 'userId'>
 ) {
   return prisma.transaction.count({ where: buildWhere(householdId, filter) });
 }

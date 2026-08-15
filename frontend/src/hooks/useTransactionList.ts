@@ -9,6 +9,7 @@ export function useTransactionList(
   year: number,
   month: number,
   categoryId: string,
+  target: string,
   keyword: string,
   page: number
 ) {
@@ -45,6 +46,7 @@ export function useTransactionList(
       year,
       month,
       categoryId: categoryId || undefined,
+      target: target || undefined,
       keyword: keyword || undefined,
       sort: 'date_desc',
       limit: TRANSACTION_PAGE_SIZE,
@@ -64,7 +66,7 @@ export function useTransactionList(
     return () => {
       cancelled = true;
     };
-  }, [year, month, categoryId, keyword, page, reloadToken]);
+  }, [year, month, categoryId, target, keyword, page, reloadToken]);
 
   const reload = useCallback(() => setReloadToken((t) => t + 1), []);
 
