@@ -5,6 +5,7 @@ import {
   deactivateSavingsGoal,
   fetchSavingsGoals,
 } from '../api/savingsGoals';
+import { ErrorMessage, LoadingMessage } from './StatusMessage';
 
 interface Props {
   // 選択中の年における世帯全体の貯金実績（年間収支可視化の集計を流用、API追加なし）。
@@ -64,8 +65,8 @@ export function SavingsGoalSection({ actualSaving }: Props) {
     <section>
       <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">貯金目標</h2>
       <div className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-4">
-        {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {loading && <LoadingMessage />}
+        {error && <ErrorMessage>{error}</ErrorMessage>}
 
         {!loading &&
           goals.map((goal) => {

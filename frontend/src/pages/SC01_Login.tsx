@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../api/auth';
+import { ErrorMessage } from '../components/StatusMessage';
 
 // SC01（ログイン画面）：設計書に画面仕様の記載がないためシンプルなフォームで実装。
 export function SC01_Login() {
@@ -50,7 +51,7 @@ export function SC01_Login() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {error && <ErrorMessage>{error}</ErrorMessage>}
         <button
           type="submit"
           disabled={submitting}

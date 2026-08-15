@@ -3,6 +3,7 @@ import { useCategories } from '../hooks/useCategories';
 import { CategoryTypeSection } from '../components/CategoryTypeSection';
 import { IconPicker } from '../components/IconPicker';
 import type { Category, CategoryType } from '../api/categories';
+import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 
 const TYPE_LABELS: Record<CategoryType, string> = {
   income: '収入',
@@ -80,10 +81,10 @@ export function CategoryMaster() {
           追加
         </button>
       </form>
-      {formError && <p className="text-sm text-red-600 dark:text-red-400 mb-4">{formError}</p>}
+      {formError && <ErrorMessage className="mb-4">{formError}</ErrorMessage>}
 
-      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {loading && <LoadingMessage />}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
 
       {!loading &&
         !error &&

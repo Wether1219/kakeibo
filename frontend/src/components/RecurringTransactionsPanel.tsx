@@ -7,6 +7,7 @@ import {
   deactivateRecurringTransaction,
   fetchRecurringTransactions,
 } from '../api/recurringTransactions';
+import { ErrorMessage, LoadingMessage } from './StatusMessage';
 
 function formatYen(amount: number): string {
   return `¥${amount.toLocaleString('ja-JP')}`;
@@ -93,14 +94,14 @@ export function RecurringTransactionsPanel() {
     }
   };
 
-  if (loading) return <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>;
+  if (loading) return <LoadingMessage />;
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-500 dark:text-gray-400">
         毎月自動で発生する取引（家賃・サブスク等）を登録できます。登録した費目は、その月をダッシュボードで表示したタイミングで自動的に取引として追加されます。
       </p>
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
 
       <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 items-end border-b border-gray-100 dark:border-gray-700 pb-4">
         <div>

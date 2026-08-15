@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useWeeklyBudgetForm } from '../hooks/useWeeklyBudgetForm';
 import { WeeklyBudgetGrid } from '../components/WeeklyBudgetGrid';
+import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 
 const now = new Date();
 
@@ -52,8 +53,8 @@ export function WeeklyBudget() {
         </div>
       </div>
 
-      {loading && <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>}
-      {error && <p className="text-sm text-red-600 dark:text-red-400 mb-4">{error}</p>}
+      {loading && <LoadingMessage />}
+      {error && <ErrorMessage className="mb-4">{error}</ErrorMessage>}
 
       {!loading && (
         <>
