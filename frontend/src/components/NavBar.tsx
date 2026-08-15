@@ -53,7 +53,7 @@ export function NavBar() {
                   }`
                 }
               >
-                <span className="text-lg leading-none">{item.icon}</span>
+                <span className="text-lg leading-none" aria-hidden="true">{item.icon}</span>
                 <span className="whitespace-nowrap">{item.label}</span>
               </NavLink>
             );
@@ -63,7 +63,7 @@ export function NavBar() {
             onClick={toggleTheme}
             className="flex flex-shrink-0 flex-col items-center justify-center gap-0.5 px-3 py-1.5 min-w-[4.5rem] text-[11px] text-gray-500 dark:text-gray-400"
           >
-            <span className="text-lg leading-none">{theme === 'dark' ? '☀️' : '🌙'}</span>
+            <span className="text-lg leading-none" aria-hidden="true">{theme === 'dark' ? '☀️' : '🌙'}</span>
             <span className="whitespace-nowrap">{theme === 'dark' ? 'ライト' : 'ダーク'}</span>
           </button>
           <button
@@ -71,7 +71,7 @@ export function NavBar() {
             onClick={handleLogout}
             className="flex flex-shrink-0 flex-col items-center justify-center gap-0.5 px-3 py-1.5 min-w-[4.5rem] text-[11px] text-gray-500 dark:text-gray-400"
           >
-            <span className="text-lg leading-none">🚪</span>
+            <span className="text-lg leading-none" aria-hidden="true">🚪</span>
             <span className="whitespace-nowrap">ログアウト</span>
           </button>
         </div>
