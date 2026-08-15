@@ -8,6 +8,7 @@ const TEST_HOUSEHOLD_ID = 999997n;
 const OTHER_HOUSEHOLD_ID = 999996n;
 const USER_ID = 999995n;
 const OTHER_USER_ID = 999994n;
+const SETTLEMENT_PARTNER_USER_ID = 999993n;
 const app = createApp();
 
 let categoryId: string;
@@ -25,11 +26,12 @@ async function resetHousehold(id: bigint) {
 beforeAll(async () => {
   await resetHousehold(TEST_HOUSEHOLD_ID);
   await resetHousehold(OTHER_HOUSEHOLD_ID);
-  await prisma.user.deleteMany({ where: { id: { in: [USER_ID, OTHER_USER_ID] } } });
+  await prisma.user.deleteMany({ where: { id: { in: [USER_ID, OTHER_USER_ID, SETTLEMENT_PARTNER_USER_ID] } } });
   await prisma.user.createMany({
     data: [
       { id: USER_ID, householdId: TEST_HOUSEHOLD_ID, displayName: 'たいよう', email: `user${USER_ID}@test.local`, passwordHash: 'test-hash' },
       { id: OTHER_USER_ID, householdId: OTHER_HOUSEHOLD_ID, displayName: 'みらの', email: `user${OTHER_USER_ID}@test.local`, passwordHash: 'test-hash' },
+      { id: SETTLEMENT_PARTNER_USER_ID, householdId: TEST_HOUSEHOLD_ID, displayName: 'みらの', email: `user${SETTLEMENT_PARTNER_USER_ID}@test.local`, passwordHash: 'test-hash' },
     ],
   });
   const category = await prisma.category.create({
@@ -49,7 +51,7 @@ afterAll(async () => {
     where: { householdId: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } },
   });
   await prisma.category.deleteMany({ where: { householdId: TEST_HOUSEHOLD_ID } });
-  await prisma.user.deleteMany({ where: { id: { in: [USER_ID, OTHER_USER_ID] } } });
+  await prisma.user.deleteMany({ where: { id: { in: [USER_ID, OTHER_USER_ID, SETTLEMENT_PARTNER_USER_ID] } } });
   await prisma.household.deleteMany({ where: { id: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } } });
   await prisma.$disconnect();
 });
@@ -321,6 +323,101 @@ describe('/api/v1/transactions', () => {
       .post('/api/v1/transactions')
       .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
       .send(baseBody({ otherPaidAmount: -1 }));
+    expect(res.status).toBe(400);
+  });
+
+  it('settlementPayerUserId・settlementBurden・settlementPartialAmountを指定して登録・更新でき、未指定時はnullになる', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(
+        baseBody({
+          amount: 4000,
+          settlementPayerUserId: SETTLEMENT_PARTNER_USER_ID.toString(),
+          settlementBurden: 'half',
+          settlementPartialAmount: 500,
+        })
+      );
+    expect(createRes.status).toBe(201);
+    expect(createRes.body.settlementPayerUserId).toBe(SETTLEMENT_PARTNER_USER_ID.toString());
+    expect(createRes.body.settlementBurden).toBe('half');
+    expect(createRes.body.settlementPartialAmount).toBe(500);
+
+    const noneRes = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody());
+    expect(noneRes.status).toBe(201);
+    expect(noneRes.body.settlementPayerUserId).toBeNull();
+    expect(noneRes.body.settlementBurden).toBeNull();
+    expect(noneRes.body.settlementPartialAmount).toBeNull();
+
+    const updateRes = await request(app)
+      .put(`/api/v1/transactions/${createRes.body.id}`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(
+        baseBody({
+          amount: 4000,
+          settlementPayerUserId: SETTLEMENT_PARTNER_USER_ID.toString(),
+          settlementBurden: 'other_full',
+          settlementPartialAmount: 0,
+        })
+      );
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body.settlementBurden).toBe('other_full');
+    expect(updateRes.body.settlementPartialAmount).toBe(0);
+  });
+
+  it('settlementPayerUserIdを指定してsettlementBurden未指定の場合は400', async () => {
+    const res = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ settlementPayerUserId: SETTLEMENT_PARTNER_USER_ID.toString() }));
+    expect(res.status).toBe(400);
+  });
+
+  it('settlementBurdenを指定してsettlementPayerUserId未指定の場合は400', async () => {
+    const res = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ settlementBurden: 'half' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('settlementPartialAmountがamountを超える場合は400', async () => {
+    const res = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(
+        baseBody({
+          amount: 1000,
+          settlementPayerUserId: SETTLEMENT_PARTNER_USER_ID.toString(),
+          settlementBurden: 'half',
+          settlementPartialAmount: 1001,
+        })
+      );
+    expect(res.status).toBe(400);
+  });
+
+  it('settlementPartialAmountが負数の場合は400', async () => {
+    const res = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(
+        baseBody({
+          settlementPayerUserId: SETTLEMENT_PARTNER_USER_ID.toString(),
+          settlementBurden: 'half',
+          settlementPartialAmount: -1,
+        })
+      );
+    expect(res.status).toBe(400);
+  });
+
+  it('settlementBurdenが不正な値の場合は400', async () => {
+    const res = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ settlementPayerUserId: SETTLEMENT_PARTNER_USER_ID.toString(), settlementBurden: 'invalid' }));
     expect(res.status).toBe(400);
   });
 

@@ -4,8 +4,10 @@ import { BalanceSummaryCard } from '../components/BalanceSummaryCard';
 import { ExpensePieCharts } from '../components/ExpensePieCharts';
 import { MonthSelector } from '../components/MonthSelector';
 import { RecentTransactions } from '../components/RecentTransactions';
+import { SettlementCard } from '../components/SettlementCard';
 import { WeeklyBudgetProgress } from '../components/WeeklyBudgetProgress';
 import { useDashboard } from '../hooks/useDashboard';
+import { useMonthlySettlement } from '../hooks/useMonthlySettlement';
 import { useYearMonthParams } from '../hooks/useYearMonthParams';
 
 export function SC02_Dashboard() {
@@ -15,6 +17,7 @@ export function SC02_Dashboard() {
 
   const { summary, weeklyBudgets, recentTransactions, categories, users, loading, error, removeTransaction } =
     useDashboard(year, month);
+  const { settlement, loading: settlementLoading, error: settlementError } = useMonthlySettlement(year, month);
 
   const handleChangeMonth = (nextYear: number, nextMonth: number) => {
     setYearMonth(nextYear, nextMonth);
@@ -60,6 +63,8 @@ export function SC02_Dashboard() {
           />
 
           <WeeklyBudgetProgress rows={weeklyBudgets} />
+
+          <SettlementCard settlement={settlement} loading={settlementLoading} error={settlementError} />
 
           <RecentTransactions
             transactions={recentTransactions}

@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import { fetchSettlementSummary, SettlementSummary } from '../api/summary';
+import { MonthlySettlement, fetchMonthlySettlement } from '../api/settlements';
 
-export interface SettlementSummaryData {
-  summary: SettlementSummary | null;
+export interface MonthlySettlementData {
+  settlement: MonthlySettlement | null;
   loading: boolean;
   error: string | null;
 }
 
-export function useSettlementSummary(year: number, month: number): SettlementSummaryData {
-  const [summary, setSummary] = useState<SettlementSummary | null>(null);
+export function useMonthlySettlement(year: number, month: number): MonthlySettlementData {
+  const [settlement, setSettlement] = useState<MonthlySettlement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,10 +16,10 @@ export function useSettlementSummary(year: number, month: number): SettlementSum
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetchSettlementSummary(year, month)
+    fetchMonthlySettlement(year, month)
       .then((res) => {
         if (cancelled) return;
-        setSummary(res);
+        setSettlement(res);
       })
       .catch((e) => {
         if (cancelled) return;
@@ -34,5 +34,5 @@ export function useSettlementSummary(year: number, month: number): SettlementSum
     };
   }, [year, month]);
 
-  return { summary, loading, error };
+  return { settlement, loading, error };
 }

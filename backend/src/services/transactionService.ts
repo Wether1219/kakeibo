@@ -1,4 +1,4 @@
-import { Prisma, SplitType } from '@prisma/client';
+import { Prisma, SettlementBurden, SplitType } from '@prisma/client';
 import { prisma } from '../prisma';
 
 export class TransactionNotFoundError extends Error {}
@@ -12,6 +12,9 @@ export interface TransactionInput {
   amount: number;
   memo?: string | null;
   otherPaidAmount?: number | null;
+  settlementPayerUserId?: bigint | null;
+  settlementBurden?: SettlementBurden | null;
+  settlementPartialAmount?: number | null;
 }
 
 function validateInput(data: TransactionInput) {
@@ -35,6 +38,26 @@ function validateInput(data: TransactionInput) {
     }
     if (data.otherPaidAmount > data.amount) {
       throw new TransactionValidationError('相手が払った金額は取引金額以下である必要があります');
+    }
+  }
+  const hasSettlementPayer =
+    data.settlementPayerUserId !== undefined && data.settlementPayerUserId !== null;
+  if (hasSettlementPayer && (data.settlementBurden === undefined || data.settlementBurden === null)) {
+    throw new TransactionValidationError(
+      'settlementPayerUserIdを指定する場合、settlementBurdenは必須です'
+    );
+  }
+  if (!hasSettlementPayer && data.settlementBurden !== undefined && data.settlementBurden !== null) {
+    throw new TransactionValidationError(
+      'settlementBurdenを指定する場合、settlementPayerUserIdは必須です'
+    );
+  }
+  if (data.settlementPartialAmount !== undefined && data.settlementPartialAmount !== null) {
+    if (!Number.isInteger(data.settlementPartialAmount) || data.settlementPartialAmount < 0) {
+      throw new TransactionValidationError('半端額は0円以上の整数である必要があります');
+    }
+    if (data.settlementPartialAmount > data.amount) {
+      throw new TransactionValidationError('半端額は取引金額以下である必要があります');
     }
   }
 }
@@ -106,6 +129,9 @@ export async function createTransaction(
       amount: data.amount,
       memo: data.memo ?? null,
       otherPaidAmount: data.otherPaidAmount ?? null,
+      settlementPayerUserId: data.settlementPayerUserId ?? null,
+      settlementBurden: data.settlementBurden ?? null,
+      settlementPartialAmount: data.settlementPartialAmount ?? null,
       createdBy,
     },
   });
@@ -131,6 +157,9 @@ export async function updateTransaction(
       amount: data.amount,
       memo: data.memo ?? null,
       otherPaidAmount: data.otherPaidAmount ?? null,
+      settlementPayerUserId: data.settlementPayerUserId ?? null,
+      settlementBurden: data.settlementBurden ?? null,
+      settlementPartialAmount: data.settlementPartialAmount ?? null,
     },
   });
   return { before: existing, after };

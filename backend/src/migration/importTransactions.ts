@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { CategoryType, SplitType } from '@prisma/client';
+import { CategoryType, SettlementBurden, SplitType } from '@prisma/client';
 import { prisma } from '../prisma';
 import { readCellString, readCellAmount, readTransactionDate, MonthSheetInfo } from './excelUtil';
 
@@ -10,6 +10,16 @@ const PERSON_COL = 'V';
 const CATEGORY_COL = 'W';
 const AMOUNT_COL = 'X';
 const MEMO_COL = 'Y';
+const SETTLEMENT_MARKER_COL = 'Z';
+const SETTLEMENT_PARTIAL_COL = 'AA';
+
+// docs/08_割り勘計算 仕様書.md 1.2節のマーカー→カラムのマッピング。
+const SETTLEMENT_MARKER_MAP: Record<string, { payerName: string; burden: SettlementBurden }> = {
+  '☀': { payerName: 'たいよう', burden: 'half' },
+  '☆': { payerName: 'みらの', burden: 'half' },
+  '♠': { payerName: 'みらの', burden: 'other_full' },
+  '♡': { payerName: 'たいよう', burden: 'other_full' },
+};
 
 export async function importTransactions(
   wb: XLSX.WorkBook,
@@ -57,6 +67,25 @@ export async function importTransactions(
         createdBy = uid;
       }
 
+      // 割り勘マーカー（Z列）。空欄は精算対象外＝3カラムともNULL。
+      const marker = readCellString(ws, `${SETTLEMENT_MARKER_COL}${row}`);
+      let settlementPayerUserId: bigint | null = null;
+      let settlementBurden: SettlementBurden | null = null;
+      let settlementPartialAmount: number | null = null;
+      if (marker !== null) {
+        const mapping = SETTLEMENT_MARKER_MAP[marker];
+        if (!mapping) {
+          throw new Error(`${sheetName}!${SETTLEMENT_MARKER_COL}${row}: 割り勘マーカー「${marker}」がマッピングできません`);
+        }
+        const payerId = userIdByDisplayName.get(mapping.payerName);
+        if (payerId === undefined) {
+          throw new Error(`${sheetName}!${SETTLEMENT_MARKER_COL}${row}: 立替払いした人「${mapping.payerName}」がマッピングできません`);
+        }
+        settlementPayerUserId = payerId;
+        settlementBurden = mapping.burden;
+        settlementPartialAmount = readCellAmount(ws, `${SETTLEMENT_PARTIAL_COL}${row}`);
+      }
+
       // transactionService.createTransactionは「当年内の日付のみ」というAPI向けバリデーションを持ち、
       // 過去データの移行とは相容れないため、ここではprismaを直接呼び出す。
       await prisma.transaction.create({
@@ -69,6 +98,9 @@ export async function importTransactions(
           amount,
           memo,
           createdBy,
+          settlementPayerUserId,
+          settlementBurden,
+          settlementPartialAmount,
         },
       });
       importedCount++;

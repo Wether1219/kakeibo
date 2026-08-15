@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { useTransactionForm } from '../hooks/useTransactionForm';
 import type { TargetSelection } from '../hooks/useTransactionForm';
 import type { Category } from '../api/categories';
+import { SettlementFormSection } from '../components/SettlementFormSection';
 
 // SC03（取引入力画面）：スマホでの入力を①費目→②対象者→③保存の3タップで完了させる
 // （金額はテンキー入力のためタップ数にカウントしない）。
@@ -28,6 +29,8 @@ export function TransactionInput() {
     setAmount,
     memo,
     setMemo,
+    settlement,
+    setSettlement,
     save,
   } = useTransactionForm();
 
@@ -153,6 +156,8 @@ export function TransactionInput() {
               </div>
             </div>
           </details>
+
+          <SettlementFormSection value={settlement} onChange={setSettlement} users={users} amount={amount} />
 
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 

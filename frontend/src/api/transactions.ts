@@ -1,6 +1,7 @@
 import { apiFetch } from './client';
 
 export type SplitType = 'self' | 'shared';
+export type SettlementBurden = 'half' | 'other_full';
 
 export interface Transaction {
   id: string;
@@ -12,6 +13,9 @@ export interface Transaction {
   amount: number;
   memo: string | null;
   otherPaidAmount: number | null;
+  settlementPayerUserId: string | null;
+  settlementBurden: SettlementBurden | null;
+  settlementPartialAmount: number | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -25,6 +29,9 @@ export interface TransactionInput {
   amount: number;
   memo?: string | null;
   otherPaidAmount?: number | null;
+  settlementPayerUserId?: string | null;
+  settlementBurden?: SettlementBurden | null;
+  settlementPartialAmount?: number | null;
 }
 
 export interface TransactionListParams {
