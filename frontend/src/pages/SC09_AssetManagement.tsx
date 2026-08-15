@@ -8,6 +8,7 @@ import { NetWorthSummary } from '../components/NetWorthSummary';
 import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 import { YearSelector } from '../components/YearSelector';
 import { useAssetBalances } from '../hooks/useAssetBalances';
+import { useTheme } from '../hooks/useTheme';
 import { useYearParam } from '../hooks/useYearMonthParams';
 
 const MONTH_LABELS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
@@ -22,13 +23,15 @@ const GROUP_COLORS: Record<AssetGroup, string> = {
   securities: '#F76707',
   insurance: '#12B886',
 };
-const NET_TOTAL_COLOR = '#212529';
+const NET_TOTAL_COLOR = { light: '#212529', dark: '#F8F9FA' };
 
 export function SC09_AssetManagement() {
   const [year, setYear] = useYearParam();
   const [group, setGroup] = useState<AssetGroupTabValue>('cash_deposit');
   const [showAddModal, setShowAddModal] = useState(false);
   const isNetWorth = group === 'net_worth';
+  const { theme } = useTheme();
+  const netTotalColor = NET_TOTAL_COLOR[theme];
 
   const { summary, loading, error, updateBalance, isSaving, reload } = useAssetBalances(year);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -92,15 +95,15 @@ export function SC09_AssetManagement() {
         title: owner.displayName,
         datasets: [
           ...buildGroupSeries(summary.assets.filter((a) => a.ownerUserId === owner.ownerUserId)),
-          { label: '資産合計', data: owner.months, borderColor: NET_TOTAL_COLOR },
+          { label: '資産合計', data: owner.months, borderColor: netTotalColor },
         ],
       })),
-    [summary.assets, summary.ownerSubtotals]
+    [summary.assets, summary.ownerSubtotals, netTotalColor]
   );
 
   const totalTrendDatasets = useMemo(
-    () => [...buildGroupSeries(summary.assets), { label: '資産合計', data: summary.total, borderColor: NET_TOTAL_COLOR }],
-    [summary.assets, summary.total]
+    () => [...buildGroupSeries(summary.assets), { label: '資産合計', data: summary.total, borderColor: netTotalColor }],
+    [summary.assets, summary.total, netTotalColor]
   );
 
   return (
