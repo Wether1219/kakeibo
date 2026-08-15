@@ -1,15 +1,18 @@
+import { SettlementDirection, SettlementUser } from '../api/summary';
+
 interface Props {
-  netAmount: number;
-  fromDisplayName: string | null;
-  toDisplayName: string | null;
+  direction: SettlementDirection;
+  amount: number;
+  fromUser: SettlementUser | null;
+  toUser: SettlementUser | null;
 }
 
 function formatYen(amount: number): string {
   return `¥${amount.toLocaleString('ja-JP')}`;
 }
 
-export function SettlementResultCard({ netAmount, fromDisplayName, toDisplayName }: Props) {
-  const isSettled = netAmount === 0 || fromDisplayName === null || toDisplayName === null;
+export function SettlementResultCard({ direction, amount, fromUser, toUser }: Props) {
+  const isSettled = direction === 'NONE' || fromUser === null || toUser === null;
 
   return (
     <div className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm text-center">
@@ -19,9 +22,9 @@ export function SettlementResultCard({ netAmount, fromDisplayName, toDisplayName
         <>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">精算額</p>
           <p className="text-2xl font-bold">
-            {fromDisplayName} <span className="text-blue-600 dark:text-blue-400">→</span> {toDisplayName}
+            {fromUser.displayName} <span className="text-blue-600 dark:text-blue-400">→</span> {toUser.displayName}
           </p>
-          <p className="text-3xl font-bold mt-2">{formatYen(netAmount)}</p>
+          <p className="text-3xl font-bold mt-2">{formatYen(amount)}</p>
         </>
       )}
     </div>

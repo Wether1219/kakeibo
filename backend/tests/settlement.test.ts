@@ -6,8 +6,8 @@ import { authHeader } from './helpers/auth';
 
 const TEST_HOUSEHOLD_ID = 999879n;
 const OTHER_HOUSEHOLD_ID = 999878n;
-const USER_A = 999877n; // たいよう
-const USER_B = 999876n; // みらの
+const USER_A = 999876n; // たいよう（id昇順で先頭）
+const USER_B = 999877n; // みらの
 const OTHER_USER_ID = 999875n;
 const app = createApp();
 
@@ -57,10 +57,7 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-async function createTx(
-  createdBy: bigint,
-  overrides: Record<string, unknown> = {}
-) {
+async function createTx(createdBy: bigint, overrides: Record<string, unknown> = {}) {
   await request(app)
     .post('/api/v1/transactions')
     .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, createdBy))
@@ -75,96 +72,105 @@ async function createTx(
 
 describe('GET /api/v1/summary/settlement', () => {
   it('Authorizationヘッダーがない場合は401', async () => {
-    const res = await request(app).get('/api/v1/summary/settlement?startDate=2026-05-01&endDate=2026-05-31');
+    const res = await request(app).get(`/api/v1/summary/settlement?year=${currentYear}&month=5`);
     expect(res.status).toBe(401);
   });
 
-  it('日付形式が不正な場合は400', async () => {
+  it('year・monthが不正な場合は400', async () => {
     const res = await request(app)
-      .get('/api/v1/summary/settlement?startDate=2026/05/01&endDate=2026-05-31')
-      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
-    expect(res.status).toBe(400);
-  });
-
-  it('startDateがendDateより後の場合は400', async () => {
-    const res = await request(app)
-      .get('/api/v1/summary/settlement?startDate=2026-06-01&endDate=2026-05-01')
+      .get('/api/v1/summary/settlement?year=abc&month=5')
       .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(400);
   });
 
   it('世帯のユーザーが2人でない場合は400', async () => {
     const res = await request(app)
-      .get(`/api/v1/summary/settlement?startDate=${currentYear}-05-01&endDate=${currentYear}-05-31`)
+      .get(`/api/v1/summary/settlement?year=${currentYear}&month=5`)
       .set('Authorization', authHeader(OTHER_HOUSEHOLD_ID, OTHER_USER_ID));
     expect(res.status).toBe(400);
   });
 
-  it('①②③④混在ケースで正しいnetAmount・方向・内訳が返る', async () => {
-    // ①たいようがshared 4000円（うちみらのが現地で2000円直接支払い）
-    await createTx(USER_A, { splitType: 'shared', amount: 4000, otherPaidAmount: 2000 });
-    // ②みらのがshared 1000円
-    await createTx(USER_B, { splitType: 'shared', amount: 1000 });
-    // ③たいようがみらの個人のために3000円支払い
-    await createTx(USER_A, { splitType: 'self', userId: USER_B.toString(), amount: 3000 });
-    // ④みらのがたいよう個人のために500円支払い
-    await createTx(USER_B, { splitType: 'self', userId: USER_A.toString(), amount: 500 });
+  it('精算対象取引がない場合はNONEでfrom/toがnullになる', async () => {
+    await createTx(USER_A);
 
     const res = await request(app)
-      .get(`/api/v1/summary/settlement?startDate=${currentYear}-05-01&endDate=${currentYear}-05-31`)
+      .get(`/api/v1/summary/settlement?year=${currentYear}&month=5`)
       .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
-    // due(①)=4000/2-2000=0, due(②)=500, due(③)=3000, due(④)=500
-    // ((①due)+③)-((②due)+④) = (0+3000)-(500+500) = 2000 → みらの→たいよう
-    expect(res.body.netAmount).toBe(2000);
-    expect(res.body.fromDisplayName).toBe('みらの');
-    expect(res.body.toDisplayName).toBe('たいよう');
-
-    const taiyoRow = res.body.breakdown.find((r: { displayName: string }) => r.displayName === 'たいよう');
-    expect(taiyoRow).toMatchObject({
-      sharedPaidTotal: 4000,
-      sharedOtherPaidTotal: 2000,
-      paidForOtherTotal: 3000,
-      paidForOtherOtherPaidTotal: 0,
-    });
-    const miranoRow = res.body.breakdown.find((r: { displayName: string }) => r.displayName === 'みらの');
-    expect(miranoRow).toMatchObject({
-      sharedPaidTotal: 1000,
-      sharedOtherPaidTotal: 0,
-      paidForOtherTotal: 500,
-      paidForOtherOtherPaidTotal: 0,
-    });
+    expect(res.body.direction).toBe('NONE');
+    expect(res.body.fromUser).toBeNull();
+    expect(res.body.toUser).toBeNull();
+    expect(res.body.amount).toBe(0);
   });
 
-  it('精算不要（0円）の場合はfrom/toがnullになる', async () => {
-    await createTx(USER_A, { splitType: 'shared', amount: 1000 });
-    await createTx(USER_B, { splitType: 'shared', amount: 1000 });
+  it('折半（half）の精算金額・方向が正しく計算される', async () => {
+    // たいようが立て替えて折半（負担額2000円）、みらのが2000円払うべき
+    await createTx(USER_A, { settlementPayerUserId: USER_A.toString(), settlementBurden: 'half', amount: 4000 });
 
     const res = await request(app)
-      .get(`/api/v1/summary/settlement?startDate=${currentYear}-05-01&endDate=${currentYear}-05-31`)
+      .get(`/api/v1/summary/settlement?year=${currentYear}&month=5`)
       .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
-    expect(res.body.netAmount).toBe(0);
-    expect(res.body.fromUserId).toBeNull();
-    expect(res.body.toUserId).toBeNull();
+    expect(res.body.direction).toBe('B_TO_A');
+    expect(res.body.amount).toBe(2000);
+    expect(res.body.fromUser.displayName).toBe('みらの');
+    expect(res.body.toUser.displayName).toBe('たいよう');
+    expect(res.body.transactionCount).toBe(1);
   });
 
-  it('期間の境界値：startDate・endDate当日は含み、前後日は除外される', async () => {
-    await createTx(USER_A, { splitType: 'shared', amount: 2000, transactionDate: `${currentYear}-05-01` });
-    await createTx(USER_A, { splitType: 'shared', amount: 2000, transactionDate: `${currentYear}-05-31` });
-    await createTx(USER_A, { splitType: 'shared', amount: 2000, transactionDate: `${currentYear}-04-30` });
-    await createTx(USER_A, { splitType: 'shared', amount: 2000, transactionDate: `${currentYear}-06-01` });
+  it('相手がその場で払った額（settlementPartialAmount）が差し引かれる', async () => {
+    await createTx(USER_A, {
+      settlementPayerUserId: USER_A.toString(),
+      settlementBurden: 'half',
+      amount: 4000,
+      settlementPartialAmount: 2000,
+    });
 
     const res = await request(app)
-      .get(`/api/v1/summary/settlement?startDate=${currentYear}-05-01&endDate=${currentYear}-05-31`)
+      .get(`/api/v1/summary/settlement?year=${currentYear}&month=5`)
       .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
-    // 期間内2件(4000円)の半額=2000円のみがnetAmountになる
-    expect(res.body.netAmount).toBe(2000);
+    // 負担額2000円のうち既に2000円払ってもらっているので精算不要
+    expect(res.body.direction).toBe('NONE');
+  });
+
+  it('全額相手負担（other_full）は立替額全額が精算対象になる', async () => {
+    await createTx(USER_B, { settlementPayerUserId: USER_B.toString(), settlementBurden: 'other_full', amount: 3000 });
+
+    const res = await request(app)
+      .get(`/api/v1/summary/settlement?year=${currentYear}&month=5`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
+    expect(res.status).toBe(200);
+    expect(res.body.direction).toBe('A_TO_B');
+    expect(res.body.amount).toBe(3000);
+    expect(res.body.fromUser.displayName).toBe('たいよう');
+    expect(res.body.toUser.displayName).toBe('みらの');
+  });
+
+  it('対象月以外の取引は集計に含まれない', async () => {
+    await createTx(USER_A, {
+      settlementPayerUserId: USER_A.toString(),
+      settlementBurden: 'half',
+      amount: 4000,
+      transactionDate: `${currentYear}-04-30`,
+    });
+    await createTx(USER_A, {
+      settlementPayerUserId: USER_A.toString(),
+      settlementBurden: 'half',
+      amount: 4000,
+      transactionDate: `${currentYear}-06-01`,
+    });
+
+    const res = await request(app)
+      .get(`/api/v1/summary/settlement?year=${currentYear}&month=5`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
+    expect(res.status).toBe(200);
+    expect(res.body.direction).toBe('NONE');
+    expect(res.body.transactionCount).toBe(0);
   });
 
   it('他世帯データが混入しない', async () => {
-    await createTx(USER_A, { splitType: 'shared', amount: 1000 });
+    await createTx(USER_A, { settlementPayerUserId: USER_A.toString(), settlementBurden: 'half', amount: 2000 });
     const otherCategory = await prisma.category.create({
       data: { householdId: OTHER_HOUSEHOLD_ID, type: 'variable_expense', name: '光熱費' },
     });
@@ -179,10 +185,10 @@ describe('GET /api/v1/summary/settlement', () => {
       });
 
     const res = await request(app)
-      .get(`/api/v1/summary/settlement?startDate=${currentYear}-05-01&endDate=${currentYear}-05-31`)
+      .get(`/api/v1/summary/settlement?year=${currentYear}&month=5`)
       .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(res.status).toBe(200);
-    expect(res.body.netAmount).toBe(500);
+    expect(res.body.amount).toBe(1000);
 
     await prisma.transaction.deleteMany({ where: { householdId: OTHER_HOUSEHOLD_ID } });
     await prisma.category.delete({ where: { id: otherCategory.id } });

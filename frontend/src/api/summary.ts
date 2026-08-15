@@ -111,37 +111,42 @@ export async function fetchVisualizationSummary(year: number): Promise<Visualiza
   return res.json();
 }
 
-export interface SettlementMember {
+export interface SettlementUser {
   userId: string;
   displayName: string;
 }
 
-export interface SettlementBreakdownRow {
-  userId: string;
-  displayName: string;
-  sharedPaidTotal: number;
-  sharedOtherPaidTotal: number;
-  paidForOtherTotal: number;
-  paidForOtherOtherPaidTotal: number;
+export type SettlementDirection = 'A_TO_B' | 'B_TO_A' | 'NONE';
+
+export interface SettlementHalfSplitBreakdown {
+  totalAmount: number;
+  fairShare: number;
+  contributedByFrom: number;
+  subtotal: number;
+}
+
+export interface SettlementOtherFullBreakdown {
+  subtotal: number;
+}
+
+export interface SettlementBreakdown {
+  halfSplit: SettlementHalfSplitBreakdown;
+  otherFull: SettlementOtherFullBreakdown;
 }
 
 export interface SettlementSummary {
-  startDate: string;
-  endDate: string;
-  members: SettlementMember[];
-  breakdown: SettlementBreakdownRow[];
-  netAmount: number;
-  fromUserId: string | null;
-  fromDisplayName: string | null;
-  toUserId: string | null;
-  toDisplayName: string | null;
+  year: number;
+  month: number;
+  direction: SettlementDirection;
+  fromUser: SettlementUser | null;
+  toUser: SettlementUser | null;
+  amount: number;
+  breakdown: SettlementBreakdown;
+  transactionCount: number;
 }
 
-export async function fetchSettlementSummary(
-  startDate: string,
-  endDate: string
-): Promise<SettlementSummary> {
-  const res = await apiFetch(`/summary/settlement?startDate=${startDate}&endDate=${endDate}`);
+export async function fetchSettlementSummary(year: number, month: number): Promise<SettlementSummary> {
+  const res = await apiFetch(`/summary/settlement?year=${year}&month=${month}`);
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.error ?? '精算金額の取得に失敗しました');

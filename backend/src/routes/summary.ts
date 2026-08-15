@@ -7,7 +7,7 @@ import {
   getVisualizationSummary,
 } from '../services/summaryService';
 import { generateDueTransactions } from '../services/recurringTransactionService';
-import { SettlementValidationError, getSettlementSummary } from '../services/settlementService';
+import { SettlementValidationError, getMonthlySettlement } from '../services/settlementService';
 
 export const summaryRouter = Router();
 summaryRouter.use(authMiddleware);
@@ -54,16 +54,13 @@ summaryRouter.get('/annual', async (req: HouseholdRequest, res) => {
 });
 
 summaryRouter.get('/settlement', async (req: HouseholdRequest, res) => {
-  const { startDate, endDate } = req.query;
-  if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(String(startDate ?? '')) ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(String(endDate ?? ''))
-  ) {
-    res.status(400).json({ error: 'startDate・endDateはYYYY-MM-DD形式で必須です' });
+  const { year, month } = req.query;
+  if (!/^\d+$/.test(String(year ?? '')) || !/^\d+$/.test(String(month ?? ''))) {
+    res.status(400).json({ error: 'year・monthは必須です' });
     return;
   }
   try {
-    const summary = await getSettlementSummary(req.householdId!, String(startDate), String(endDate));
+    const summary = await getMonthlySettlement(req.householdId!, Number(year), Number(month));
     res.json(summary);
   } catch (e) {
     if (e instanceof SettlementValidationError) {

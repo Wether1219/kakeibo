@@ -7,7 +7,7 @@ export interface SettlementSummaryData {
   error: string | null;
 }
 
-export function useSettlementSummary(startDate: string, endDate: string): SettlementSummaryData {
+export function useSettlementSummary(year: number, month: number): SettlementSummaryData {
   const [summary, setSummary] = useState<SettlementSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +16,7 @@ export function useSettlementSummary(startDate: string, endDate: string): Settle
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetchSettlementSummary(startDate, endDate)
+    fetchSettlementSummary(year, month)
       .then((res) => {
         if (cancelled) return;
         setSummary(res);
@@ -32,7 +32,7 @@ export function useSettlementSummary(startDate: string, endDate: string): Settle
     return () => {
       cancelled = true;
     };
-  }, [startDate, endDate]);
+  }, [year, month]);
 
   return { summary, loading, error };
 }
