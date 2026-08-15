@@ -28,7 +28,12 @@ export function PreSavingGrid({
               費目
             </th>
             {users.map((u) => (
-              <th key={u.id} colSpan={2} className="px-3 py-2 text-center border-b border-gray-200 dark:border-gray-700">
+              <th
+                key={u.id}
+                colSpan={2}
+                className="px-3 py-2 text-center border-b border-gray-200 dark:border-gray-700"
+                style={{ paddingRight: '4em' }}
+              >
                 {u.displayName}
               </th>
             ))}

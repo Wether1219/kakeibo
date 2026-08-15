@@ -40,6 +40,15 @@ export function SC04_TransactionList() {
     useTransactionList(year, month, categoryId, keyword, page);
 
   const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+  // 絞り込みプルダウンには、取引で実際に使われうる区分（固定費/変動費）かつ有効な費目のみ表示する
+  // （費目マスタ画面と同じ「有効な費目」の範囲に合わせ、無効化済みや収入/先取り貯金の費目は出さない）。
+  const filterableCategories = useMemo(
+    () =>
+      categories.filter(
+        (c) => c.isActive && (c.type === 'fixed_expense' || c.type === 'variable_expense')
+      ),
+    [categories]
+  );
   const userMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
 
   const totalPages = Math.max(1, Math.ceil(total / TRANSACTION_PAGE_SIZE));
@@ -70,7 +79,7 @@ export function SC04_TransactionList() {
           onChange={(e) => setCategoryId(e.target.value)}
         >
           <option value="">すべての費目</option>
-          {categories.map((c) => (
+          {filterableCategories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.icon ?? ''} {c.name}
             </option>

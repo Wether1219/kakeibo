@@ -22,6 +22,7 @@ const GROUP_COLORS: Record<AssetGroup, string> = {
   securities: '#F76707',
   insurance: '#12B886',
 };
+const NET_TOTAL_COLOR = '#212529';
 
 export function SC09_AssetManagement() {
   const [year, setYear] = useYearParam();
@@ -89,16 +90,17 @@ export function SC09_AssetManagement() {
       summary.ownerSubtotals.map((owner) => ({
         ownerUserId: owner.ownerUserId,
         title: owner.displayName,
-        datasets: buildGroupSeries(
-          summary.assets.filter((a) => a.ownerUserId === owner.ownerUserId)
-        ),
+        datasets: [
+          ...buildGroupSeries(summary.assets.filter((a) => a.ownerUserId === owner.ownerUserId)),
+          { label: '資産合計', data: owner.months, borderColor: NET_TOTAL_COLOR },
+        ],
       })),
     [summary.assets, summary.ownerSubtotals]
   );
 
   const totalTrendDatasets = useMemo(
-    () => buildGroupSeries(summary.assets),
-    [summary.assets]
+    () => [...buildGroupSeries(summary.assets), { label: '資産合計', data: summary.total, borderColor: NET_TOTAL_COLOR }],
+    [summary.assets, summary.total]
   );
 
   return (

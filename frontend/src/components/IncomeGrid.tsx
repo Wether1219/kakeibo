@@ -16,7 +16,11 @@ export function IncomeGrid({ categories, users, values, onChange }: Props) {
           <tr className="bg-gray-50 dark:bg-gray-800">
             <th className="px-3 py-2 text-left border-b border-gray-200 dark:border-gray-700">費目</th>
             {users.map((u) => (
-              <th key={u.id} className="px-3 py-2 text-right border-b border-gray-200 dark:border-gray-700">
+              <th
+                key={u.id}
+                className="px-3 py-2 text-right border-b border-gray-200 dark:border-gray-700"
+                style={{ paddingRight: '21em' }}
+              >
                 {u.displayName}
               </th>
             ))}
