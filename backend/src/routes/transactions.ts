@@ -32,6 +32,7 @@ function serializeTransaction(transaction: {
   userId: bigint | null;
   amount: { toString(): string };
   memo: string | null;
+  otherPaidAmount: { toString(): string } | null;
   createdBy: bigint;
   createdAt: Date;
   updatedAt: Date;
@@ -45,6 +46,8 @@ function serializeTransaction(transaction: {
     userId: transaction.userId?.toString() ?? null,
     amount: Number(transaction.amount.toString()),
     memo: transaction.memo,
+    otherPaidAmount:
+      transaction.otherPaidAmount === null ? null : Number(transaction.otherPaidAmount.toString()),
     createdBy: transaction.createdBy.toString(),
     createdAt: transaction.createdAt.toISOString(),
     updatedAt: transaction.updatedAt.toISOString(),
@@ -52,7 +55,7 @@ function serializeTransaction(transaction: {
 }
 
 function parseTransactionBody(body: unknown): TransactionInput | null {
-  const { transactionDate, categoryId, splitType, userId, amount, memo } =
+  const { transactionDate, categoryId, splitType, userId, amount, memo, otherPaidAmount } =
     (body as Record<string, unknown>) ?? {};
   if (
     typeof transactionDate !== 'string' ||
@@ -68,6 +71,13 @@ function parseTransactionBody(body: unknown): TransactionInput | null {
   if (memo !== undefined && memo !== null && typeof memo !== 'string') {
     return null;
   }
+  if (
+    otherPaidAmount !== undefined &&
+    otherPaidAmount !== null &&
+    typeof otherPaidAmount !== 'number'
+  ) {
+    return null;
+  }
   return {
     transactionDate,
     categoryId: BigInt(categoryId as string | number),
@@ -75,6 +85,7 @@ function parseTransactionBody(body: unknown): TransactionInput | null {
     userId: userId !== undefined && userId !== null ? BigInt(userId as string | number) : null,
     amount,
     memo: (memo as string | undefined) ?? null,
+    otherPaidAmount: (otherPaidAmount as number | undefined) ?? null,
   };
 }
 

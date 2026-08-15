@@ -11,6 +11,7 @@ export interface TransactionInput {
   userId?: bigint | null;
   amount: number;
   memo?: string | null;
+  otherPaidAmount?: number | null;
 }
 
 function validateInput(data: TransactionInput) {
@@ -27,6 +28,14 @@ function validateInput(data: TransactionInput) {
   }
   if (data.splitType === 'self' && (data.userId === undefined || data.userId === null)) {
     throw new TransactionValidationError('splitTypeがselfの場合、userIdは必須です');
+  }
+  if (data.otherPaidAmount !== undefined && data.otherPaidAmount !== null) {
+    if (!Number.isInteger(data.otherPaidAmount) || data.otherPaidAmount < 0) {
+      throw new TransactionValidationError('相手が払った金額は0円以上の整数である必要があります');
+    }
+    if (data.otherPaidAmount > data.amount) {
+      throw new TransactionValidationError('相手が払った金額は取引金額以下である必要があります');
+    }
   }
 }
 
@@ -96,6 +105,7 @@ export async function createTransaction(
       userId: data.splitType === 'shared' ? null : data.userId ?? null,
       amount: data.amount,
       memo: data.memo ?? null,
+      otherPaidAmount: data.otherPaidAmount ?? null,
       createdBy,
     },
   });
@@ -120,6 +130,7 @@ export async function updateTransaction(
       userId: data.splitType === 'shared' ? null : data.userId ?? null,
       amount: data.amount,
       memo: data.memo ?? null,
+      otherPaidAmount: data.otherPaidAmount ?? null,
     },
   });
   return { before: existing, after };

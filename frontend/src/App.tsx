@@ -11,6 +11,7 @@ import { SC07_AnnualTrend } from './pages/SC07_AnnualTrend';
 import { SC08_Visualization } from './pages/SC08_Visualization';
 import { SC09_AssetManagement } from './pages/SC09_AssetManagement';
 import { SC11_Settings } from './pages/SC11_Settings';
+import { Settlement } from './pages/Settlement';
 import { isLoggedIn } from './api/client';
 
 export default function App() {
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/dashboard" element={<SC02_Dashboard />} />
         <Route path="/transaction" element={<TransactionInput />} />
         <Route path="/transactions" element={<SC04_TransactionList />} />
+        <Route path="/settlement" element={<Settlement />} />
         <Route path="/income" element={<IncomeAndPreSaving />} />
         <Route path="/weekly-budget" element={<WeeklyBudget />} />
         <Route path="/category-master" element={<CategoryMaster />} />

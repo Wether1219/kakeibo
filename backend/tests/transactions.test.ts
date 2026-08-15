@@ -285,6 +285,45 @@ describe('/api/v1/transactions', () => {
     await prisma.category.delete({ where: { id: otherCategory.id } });
   });
 
+  it('otherPaidAmountを指定して登録・更新でき、未指定時はnullになる', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ splitType: 'shared', userId: undefined, amount: 4000, otherPaidAmount: 2000 }));
+    expect(createRes.status).toBe(201);
+    expect(createRes.body.otherPaidAmount).toBe(2000);
+
+    const noneRes = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody());
+    expect(noneRes.status).toBe(201);
+    expect(noneRes.body.otherPaidAmount).toBeNull();
+
+    const updateRes = await request(app)
+      .put(`/api/v1/transactions/${createRes.body.id}`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ splitType: 'shared', userId: undefined, amount: 4000, otherPaidAmount: 1000 }));
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body.otherPaidAmount).toBe(1000);
+  });
+
+  it('otherPaidAmountがamountを超える場合は400', async () => {
+    const res = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ amount: 1000, otherPaidAmount: 1001 }));
+    expect(res.status).toBe(400);
+  });
+
+  it('otherPaidAmountが負数の場合は400', async () => {
+    const res = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ otherPaidAmount: -1 }));
+    expect(res.status).toBe(400);
+  });
+
   it('取引を削除できる', async () => {
     const createRes = await request(app)
       .post('/api/v1/transactions')

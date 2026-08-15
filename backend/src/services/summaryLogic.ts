@@ -85,3 +85,86 @@ export function calculateRatios(input: RatioInput): RatioResult {
     savingRatio: (input.totalSaving / input.income) * 100,
   };
 }
+
+export interface SettlementTransaction {
+  splitType: 'self' | 'shared';
+  userId: bigint | null;
+  createdBy: bigint;
+  amount: number;
+  otherPaidAmount: number | null;
+}
+
+export interface SettlementBreakdownRow {
+  userId: bigint;
+  sharedPaidTotal: number;
+  sharedOtherPaidTotal: number;
+  paidForOtherTotal: number;
+  paidForOtherOtherPaidTotal: number;
+}
+
+export interface SettlementResult {
+  breakdown: [SettlementBreakdownRow, SettlementBreakdownRow];
+  netAmount: number;
+  payerIndex: 0 | 1 | null;
+}
+
+/**
+ * 割り勘・立て替え精算額の算出（2人固定）。
+ * 各取引の貸し due(t) = (shared: amount/2, self(相手向け): amount) - (otherPaidAmount ?? 0) を、
+ * 支払者(createdBy)がmemberIds[0]なら+、memberIds[1]なら-として合算し、最後に1回だけ丸める。
+ * 加算とamount/2は順序を交換しても結果が変わらないため、取引ごとのfloor処理（apportionTransactionAmount）は行わない。
+ * splitType='self'かつuserId===createdBy（完全に自分用の支出）は精算対象外。
+ */
+export function calculateSettlement(
+  transactions: SettlementTransaction[],
+  memberIds: readonly [bigint, bigint]
+): SettlementResult {
+  const breakdown: [SettlementBreakdownRow, SettlementBreakdownRow] = [
+    {
+      userId: memberIds[0],
+      sharedPaidTotal: 0,
+      sharedOtherPaidTotal: 0,
+      paidForOtherTotal: 0,
+      paidForOtherOtherPaidTotal: 0,
+    },
+    {
+      userId: memberIds[1],
+      sharedPaidTotal: 0,
+      sharedOtherPaidTotal: 0,
+      paidForOtherTotal: 0,
+      paidForOtherOtherPaidTotal: 0,
+    },
+  ];
+
+  let rawNet = 0;
+
+  for (const tx of transactions) {
+    if (tx.splitType === 'self' && tx.userId === tx.createdBy) {
+      continue;
+    }
+    const payerIndex = memberIds.indexOf(tx.createdBy);
+    if (payerIndex !== 0 && payerIndex !== 1) {
+      continue;
+    }
+    const otherPaid = tx.otherPaidAmount ?? 0;
+    const baseAmount = tx.splitType === 'shared' ? tx.amount / 2 : tx.amount;
+    const due = baseAmount - otherPaid;
+
+    const row = breakdown[payerIndex];
+    if (tx.splitType === 'shared') {
+      row.sharedPaidTotal += tx.amount;
+      row.sharedOtherPaidTotal += otherPaid;
+    } else {
+      row.paidForOtherTotal += tx.amount;
+      row.paidForOtherOtherPaidTotal += otherPaid;
+    }
+
+    rawNet += payerIndex === 0 ? due : -due;
+  }
+
+  // 対称丸め：Math.round単体だと負数の.5が0側に丸められ、支払者の入れ替えだけで金額が変わってしまうため。
+  const roundedNet = Math.sign(rawNet) * Math.round(Math.abs(rawNet));
+  const payerIndex: 0 | 1 | null = roundedNet === 0 ? null : roundedNet > 0 ? 1 : 0;
+
+  return { breakdown, netAmount: Math.abs(roundedNet), payerIndex };
+}

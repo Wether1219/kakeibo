@@ -4,7 +4,9 @@ import {
   apportionTransactionAmount,
   calculateMonthlySummaryForUser,
   calculateRatios,
+  calculateSettlement,
   calculateWeekNumber,
+  SettlementTransaction,
 } from '../src/services/summaryLogic';
 
 const USER_A = 1n;
@@ -127,5 +129,133 @@ describe('calculateRatios（5.4 比率計算・ゼロ除算ガード）', () => 
     const result = calculateRatios({ income: 200000, expense: 120000, totalSaving: 80000 });
     expect(result.expenseRatio).toBe(60);
     expect(result.savingRatio).toBe(40);
+  });
+});
+
+describe('calculateSettlement（割り勘・立て替え精算額の算出）', () => {
+  function tx(partial: Partial<SettlementTransaction>): SettlementTransaction {
+    return {
+      splitType: 'shared',
+      userId: null,
+      createdBy: USER_A,
+      amount: 0,
+      otherPaidAmount: null,
+      ...partial,
+    };
+  }
+
+  it('①のみ（A支払い・shared）：Bが半額をAに支払う', () => {
+    const result = calculateSettlement(
+      [tx({ splitType: 'shared', createdBy: USER_A, amount: 1000 })],
+      [USER_A, USER_B]
+    );
+    expect(result.netAmount).toBe(500);
+    expect(result.payerIndex).toBe(1); // Bが支払う
+    expect(result.breakdown[0]).toMatchObject({ sharedPaidTotal: 1000, sharedOtherPaidTotal: 0 });
+  });
+
+  it('②のみ（B支払い・shared）：Aが半額をBに支払う', () => {
+    const result = calculateSettlement(
+      [tx({ splitType: 'shared', createdBy: USER_B, amount: 1000 })],
+      [USER_A, USER_B]
+    );
+    expect(result.netAmount).toBe(500);
+    expect(result.payerIndex).toBe(0); // Aが支払う
+  });
+
+  it('③のみ（Aが払った・対象者=B個人）：Bが全額をAに支払う', () => {
+    const result = calculateSettlement(
+      [tx({ splitType: 'self', createdBy: USER_A, userId: USER_B, amount: 3000 })],
+      [USER_A, USER_B]
+    );
+    expect(result.netAmount).toBe(3000);
+    expect(result.payerIndex).toBe(1);
+    expect(result.breakdown[0]).toMatchObject({ paidForOtherTotal: 3000, paidForOtherOtherPaidTotal: 0 });
+  });
+
+  it('④のみ（Bが払った・対象者=A個人）：Aが全額をBに支払う', () => {
+    const result = calculateSettlement(
+      [tx({ splitType: 'self', createdBy: USER_B, userId: USER_A, amount: 2000 })],
+      [USER_A, USER_B]
+    );
+    expect(result.netAmount).toBe(2000);
+    expect(result.payerIndex).toBe(0);
+  });
+
+  it('self×自分用（userId===createdBy）は精算対象外', () => {
+    const result = calculateSettlement(
+      [tx({ splitType: 'self', createdBy: USER_A, userId: USER_A, amount: 5000 })],
+      [USER_A, USER_B]
+    );
+    expect(result.netAmount).toBe(0);
+    expect(result.payerIndex).toBeNull();
+    expect(result.breakdown[0]).toMatchObject({ sharedPaidTotal: 0, paidForOtherTotal: 0 });
+  });
+
+  it('居酒屋の例：sharedでotherPaidAmountが半額と一致する場合、その取引単体の精算は不要', () => {
+    const result = calculateSettlement(
+      [tx({ splitType: 'shared', createdBy: USER_A, amount: 4000, otherPaidAmount: 2000 })],
+      [USER_A, USER_B]
+    );
+    expect(result.netAmount).toBe(0);
+    expect(result.payerIndex).toBeNull();
+    // 内訳はotherPaidAmount調整前の生の値を保持する
+    expect(result.breakdown[0]).toMatchObject({ sharedPaidTotal: 4000, sharedOtherPaidTotal: 2000 });
+  });
+
+  it('複数取引が相殺してnetAmount=0になる', () => {
+    const result = calculateSettlement(
+      [
+        tx({ splitType: 'shared', createdBy: USER_A, amount: 2000 }), // Aの寄与 +1000
+        tx({ splitType: 'shared', createdBy: USER_B, amount: 2000 }), // Bの寄与 -1000
+      ],
+      [USER_A, USER_B]
+    );
+    expect(result.netAmount).toBe(0);
+    expect(result.payerIndex).toBeNull();
+  });
+
+  it('端数の対称丸め：支払者が入れ替わっても端数1円の扱いが対称になる', () => {
+    const byA = calculateSettlement(
+      [tx({ splitType: 'shared', createdBy: USER_A, amount: 1 })],
+      [USER_A, USER_B]
+    );
+    const byB = calculateSettlement(
+      [tx({ splitType: 'shared', createdBy: USER_B, amount: 1 })],
+      [USER_A, USER_B]
+    );
+    // Math.round単体だとMath.round(-0.5)=0になり非対称になってしまうため、両方とも1円になることを確認する
+    expect(byA.netAmount).toBe(1);
+    expect(byA.payerIndex).toBe(1);
+    expect(byB.netAmount).toBe(1);
+    expect(byB.payerIndex).toBe(0);
+  });
+
+  it('otherPaidAmountが半額を超えると精算方向が反転する', () => {
+    const result = calculateSettlement(
+      [tx({ splitType: 'shared', createdBy: USER_A, amount: 1000, otherPaidAmount: 800 })],
+      [USER_A, USER_B]
+    );
+    // Bの本来の取り分は500円だが現地で800円払っているため、300円分はAがBに払う
+    expect(result.netAmount).toBe(300);
+    expect(result.payerIndex).toBe(0);
+  });
+
+  it('0件（空配列）は全て0になる', () => {
+    const result = calculateSettlement([], [USER_A, USER_B]);
+    expect(result.netAmount).toBe(0);
+    expect(result.payerIndex).toBeNull();
+    expect(result.breakdown[0]).toMatchObject({
+      sharedPaidTotal: 0,
+      sharedOtherPaidTotal: 0,
+      paidForOtherTotal: 0,
+      paidForOtherOtherPaidTotal: 0,
+    });
+    expect(result.breakdown[1]).toMatchObject({
+      sharedPaidTotal: 0,
+      sharedOtherPaidTotal: 0,
+      paidForOtherTotal: 0,
+      paidForOtherOtherPaidTotal: 0,
+    });
   });
 });

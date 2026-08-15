@@ -11,6 +11,7 @@ export interface Transaction {
   userId: string | null;
   amount: number;
   memo: string | null;
+  otherPaidAmount: number | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -23,6 +24,7 @@ export interface TransactionInput {
   userId?: string | null;
   amount: number;
   memo?: string | null;
+  otherPaidAmount?: number | null;
 }
 
 export interface TransactionListParams {

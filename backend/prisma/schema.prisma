@@ -87,6 +87,9 @@ model Transaction {
   userId          BigInt?   @map("user_id")
   user            User?     @relation("TransactionUser", fields: [userId], references: [id])
   amount          Decimal   @db.Decimal(10, 0)
+  // 割り勘・立て替え精算の自動計算用。sharedまたはself(userId≠createdBy)の取引において、
+  // 相手がその場で直接支払った金額（現金精算済み分）。精算計算時にamountから減額する。
+  otherPaidAmount Decimal?  @map("other_paid_amount") @db.Decimal(10, 0)
   memo            String?   @db.VarChar(255)
   createdBy       BigInt    @map("created_by")
   createdByUser   User      @relation("TransactionCreatedBy", fields: [createdBy], references: [id])

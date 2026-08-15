@@ -110,3 +110,41 @@ export async function fetchVisualizationSummary(year: number): Promise<Visualiza
   if (!res.ok) throw new Error('収支可視化データの取得に失敗しました');
   return res.json();
 }
+
+export interface SettlementMember {
+  userId: string;
+  displayName: string;
+}
+
+export interface SettlementBreakdownRow {
+  userId: string;
+  displayName: string;
+  sharedPaidTotal: number;
+  sharedOtherPaidTotal: number;
+  paidForOtherTotal: number;
+  paidForOtherOtherPaidTotal: number;
+}
+
+export interface SettlementSummary {
+  startDate: string;
+  endDate: string;
+  members: SettlementMember[];
+  breakdown: SettlementBreakdownRow[];
+  netAmount: number;
+  fromUserId: string | null;
+  fromDisplayName: string | null;
+  toUserId: string | null;
+  toDisplayName: string | null;
+}
+
+export async function fetchSettlementSummary(
+  startDate: string,
+  endDate: string
+): Promise<SettlementSummary> {
+  const res = await apiFetch(`/summary/settlement?startDate=${startDate}&endDate=${endDate}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? '精算金額の取得に失敗しました');
+  }
+  return res.json();
+}

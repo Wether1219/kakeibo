@@ -32,6 +32,12 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
   const [transactionDate, setTransactionDate] = useState(transaction.transactionDate);
   const [amount, setAmount] = useState<number | ''>(transaction.amount);
   const [memo, setMemo] = useState(transaction.memo ?? '');
+  const [otherPaidAmount, setOtherPaidAmount] = useState<number | ''>(
+    transaction.otherPaidAmount ?? ''
+  );
+
+  // 対象者が「両方」または「自分以外」の時のみ、相手がその場で直接払った金額を入力できる。
+  const showOtherPaidAmount = targetKey === 'shared' || (targetKey !== '' && targetKey !== transaction.createdBy);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,6 +86,10 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
       setError('対象者を選択してください');
       return;
     }
+    if (showOtherPaidAmount && otherPaidAmount !== '' && (otherPaidAmount < 0 || otherPaidAmount > amount)) {
+      setError('相手が払った金額は0円以上、取引金額以下で入力してください');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -90,6 +100,7 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
         userId: targetKey === 'shared' ? null : targetKey,
         amount,
         memo: memo.trim() || null,
+        otherPaidAmount: showOtherPaidAmount && otherPaidAmount !== '' ? otherPaidAmount : null,
       };
       await updateTransaction(transaction.id, data);
       onSaved();
@@ -174,6 +185,25 @@ export function EditTransactionModal({ transaction, onClose, onSaved }: Props) {
                 </button>
               </div>
             </div>
+
+            {showOtherPaidAmount && (
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  相手がその場で払った金額（任意）
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  step={1}
+                  className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-2 text-base text-right"
+                  value={otherPaidAmount}
+                  onChange={(e) =>
+                    setOtherPaidAmount(e.target.value === '' ? '' : Number(e.target.value))
+                  }
+                />
+              </div>
+            )}
 
             <div>
               <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">金額</label>

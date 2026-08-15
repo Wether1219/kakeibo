@@ -6,6 +6,7 @@ const NAV_ITEMS: { to: string; icon: string; label: string }[] = [
   { to: '/dashboard', icon: '🏠', label: 'ダッシュボード' },
   { to: '/transaction', icon: '✏️', label: '取引入力' },
   { to: '/transactions', icon: '📋', label: '取引一覧' },
+  { to: '/settlement', icon: '🤝', label: '精算' },
   { to: '/income', icon: '💰', label: '収入・貯金' },
   { to: '/weekly-budget', icon: '📅', label: '週次予算' },
   { to: '/category-master', icon: '🏷️', label: '費目マスタ' },
