@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AssetGroup, createAsset } from '../api/assets';
 import { fetchUsers, User } from '../api/users';
+import { useModalA11y } from '../hooks/useModalA11y';
+import { ErrorMessage } from './StatusMessage';
 
 interface Props {
   assetGroup: AssetGroup;
@@ -17,6 +19,8 @@ export function AddAssetModal({ assetGroup, onClose, onCreated }: Props) {
   const [monthlyContribution, setMonthlyContribution] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const dialogRef = useModalA11y(onClose);
 
   useEffect(() => {
     fetchUsers()
@@ -56,8 +60,17 @@ export function AddAssetModal({ assetGroup, onClose, onCreated }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded shadow-lg w-full max-w-sm p-4">
-        <h2 className="text-lg font-bold mb-4">口座追加</h2>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-asset-title"
+        tabIndex={-1}
+        className="bg-white dark:bg-gray-800 rounded shadow-lg w-full max-w-sm p-4"
+      >
+        <h2 id="add-asset-title" className="text-lg font-bold mb-4">
+          口座追加
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="block text-xs text-gray-500 dark:text-gray-400">名称</label>
@@ -110,7 +123,7 @@ export function AddAssetModal({ assetGroup, onClose, onCreated }: Props) {
             />
           </div>
 
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && <ErrorMessage>{error}</ErrorMessage>}
 
           <div className="flex justify-end gap-2 pt-2">
             <button
