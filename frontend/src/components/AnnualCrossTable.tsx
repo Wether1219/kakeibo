@@ -18,6 +18,10 @@ interface UserTotal {
 }
 
 export function AnnualCrossTable({ rows }: Props) {
+  // 対象者ごとにまとめて表示するため、対象者(userId)を優先キーに安定ソートする
+  // （費目の並び順は元の並びを維持、Array.prototype.sortは安定ソートのため成立する）
+  const sortedRows = [...rows].sort((a, b) => a.userId.localeCompare(b.userId));
+
   const totalMonths = new Array(12).fill(0);
   let totalAnnual = 0;
   const userTotals = new Map<string, UserTotal>();
@@ -65,7 +69,7 @@ export function AnnualCrossTable({ rows }: Props) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {sortedRows.map((row) => (
             <tr key={`${row.categoryName}-${row.userId}`} className="border-b border-gray-100 dark:border-gray-700">
               <td className="sticky left-0 bg-white dark:bg-gray-800 z-10 px-3 py-2 whitespace-nowrap">
                 {row.categoryName}({row.displayName})
