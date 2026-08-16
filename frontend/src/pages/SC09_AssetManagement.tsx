@@ -1,15 +1,46 @@
+import type { ChartOptions } from 'chart.js';
 import { useMemo, useState } from 'react';
 import { AssetGroup, deactivateAsset } from '../api/assets';
 import { AddAssetModal } from '../components/AddAssetModal';
 import { AssetBalanceTable } from '../components/AssetBalanceTable';
 import { AssetGroupTab, AssetGroupTabValue } from '../components/AssetGroupTab';
 import { LineChart } from '../components/charts/LineChart';
+import { getChartThemeColors } from '../components/charts/chartTheme';
 import { NetWorthSummary } from '../components/NetWorthSummary';
 import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 import { YearSelector } from '../components/YearSelector';
 import { useAssetBalances } from '../hooks/useAssetBalances';
 import { useTheme } from '../hooks/useTheme';
 import { useYearParam } from '../hooks/useYearMonthParams';
+
+const TOTAL_LABEL = '資産合計';
+
+// 資産推移グラフのツールチップ・凡例に、区分（現金・預貯金/証券・株式/保険）ごとの構成比(%)を表示する。
+// 「資産合計」は3区分の合算そのものなので割合計算の対象からは除外する。
+function buildGroupRatioChartOptions(textColor: string): ChartOptions<'line'> {
+  return {
+    plugins: {
+      legend: { position: 'bottom', labels: { color: textColor } },
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            const label = context.dataset.label ?? '';
+            const data = context.dataset.data as number[];
+            const value = data[context.dataIndex] ?? 0;
+            if (label === TOTAL_LABEL) {
+              return `${label}: ${value.toLocaleString()}円`;
+            }
+            const groupTotal = context.chart.data.datasets
+              .filter((d) => d.label !== TOTAL_LABEL)
+              .reduce((sum, d) => sum + ((d.data as number[])[context.dataIndex] ?? 0), 0);
+            const percent = groupTotal > 0 ? Math.round((value / groupTotal) * 1000) / 10 : 0;
+            return `${label}: ${value.toLocaleString()}円 (${percent}%)`;
+          },
+        },
+      },
+    },
+  };
+}
 
 const MONTH_LABELS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
 
@@ -32,6 +63,8 @@ export function SC09_AssetManagement() {
   const isNetWorth = group === 'net_worth';
   const { theme } = useTheme();
   const netTotalColor = NET_TOTAL_COLOR[theme];
+  const { textColor } = getChartThemeColors(theme);
+  const trendChartOptions = useMemo(() => buildGroupRatioChartOptions(textColor), [textColor]);
 
   const { summary, loading, error, updateBalance, isSaving, reload } = useAssetBalances(year);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -147,7 +180,7 @@ export function SC09_AssetManagement() {
             <section key={chart.ownerUserId} className="space-y-2">
               <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">資産推移（{chart.title}）</h2>
               <div className="h-64">
-                <LineChart labels={MONTH_LABELS} datasets={chart.datasets} />
+                <LineChart labels={MONTH_LABELS} datasets={chart.datasets} options={trendChartOptions} />
               </div>
             </section>
           ))}
@@ -155,7 +188,7 @@ export function SC09_AssetManagement() {
           <section className="space-y-2">
             <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">資産推移（総合計）</h2>
             <div className="h-64">
-              <LineChart labels={MONTH_LABELS} datasets={totalTrendDatasets} />
+              <LineChart labels={MONTH_LABELS} datasets={totalTrendDatasets} options={trendChartOptions} />
             </div>
           </section>
         </>

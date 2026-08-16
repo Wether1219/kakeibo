@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { AssetBalanceRow, OwnerSubtotalRow } from '../api/assetBalances';
 
 interface Props {
@@ -14,6 +14,17 @@ const MONTH_LABELS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8
 
 function formatYen(amount: number): string {
   return `¥${amount.toLocaleString('ja-JP')}`;
+}
+
+function formatDiff(diff: number | null): string {
+  if (diff === null) return '-';
+  const sign = diff > 0 ? '+' : '';
+  return `${sign}${diff.toLocaleString('ja-JP')}`;
+}
+
+// 1月は前年12月のデータを保持していないため差分なし（null）とする
+function calcMonthDiffs(months: number[]): (number | null)[] {
+  return months.map((amount, idx) => (idx === 0 ? null : amount - months[idx - 1]));
 }
 
 export function AssetBalanceTable({
@@ -120,24 +131,55 @@ export function AssetBalanceTable({
               </td>
             </tr>
           ))}
-          {ownerSubtotals.map((owner) => (
-            <tr key={`subtotal-${owner.ownerUserId}`} className="bg-gray-50 dark:bg-gray-800 font-medium">
-              <td className="sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 px-3 py-2 whitespace-nowrap">
-                {owner.displayName}計
-              </td>
-              {owner.months.map((amount, idx) => (
-                <td key={idx} className="px-3 py-2 text-right whitespace-nowrap">
-                  {formatYen(amount)}
-                </td>
-              ))}
-              <td />
-            </tr>
-          ))}
+          {ownerSubtotals.map((owner) => {
+            const diffs = calcMonthDiffs(owner.months);
+            return (
+              <Fragment key={owner.ownerUserId}>
+                <tr className="bg-gray-50 dark:bg-gray-800 font-medium">
+                  <td className="sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 px-3 py-2 whitespace-nowrap">
+                    {owner.displayName}計
+                  </td>
+                  {owner.months.map((amount, idx) => (
+                    <td key={idx} className="px-3 py-2 text-right whitespace-nowrap">
+                      {formatYen(amount)}
+                    </td>
+                  ))}
+                  <td />
+                </tr>
+                <tr className="bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400">
+                  <td className="sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 px-3 py-1 whitespace-nowrap">
+                    {owner.displayName}計 前月差
+                  </td>
+                  {diffs.map((diff, idx) => (
+                    <td
+                      key={idx}
+                      className={`px-3 py-1 text-right whitespace-nowrap ${diff !== null && diff < 0 ? 'text-red-600 dark:text-red-400' : ''}`}
+                    >
+                      {formatDiff(diff)}
+                    </td>
+                  ))}
+                  <td />
+                </tr>
+              </Fragment>
+            );
+          })}
           <tr className="bg-gray-50 dark:bg-gray-800 font-bold">
             <td className="sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 px-3 py-2 whitespace-nowrap">合計</td>
             {total.map((amount, idx) => (
               <td key={idx} className="px-3 py-2 text-right whitespace-nowrap">
                 {formatYen(amount)}
+              </td>
+            ))}
+            <td />
+          </tr>
+          <tr className="bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400">
+            <td className="sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 px-3 py-1 whitespace-nowrap">合計 前月差</td>
+            {calcMonthDiffs(total).map((diff, idx) => (
+              <td
+                key={idx}
+                className={`px-3 py-1 text-right whitespace-nowrap ${diff !== null && diff < 0 ? 'text-red-600 dark:text-red-400' : ''}`}
+              >
+                {formatDiff(diff)}
               </td>
             ))}
             <td />
