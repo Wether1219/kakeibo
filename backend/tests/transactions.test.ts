@@ -225,6 +225,36 @@ describe('/api/v1/transactions', () => {
     expect(res.status).toBe(400);
   });
 
+  it(
+    'limit未指定はデフォルト100件で打ち切られ、明示指定でも上限1000件で丸められる（X-Total-Countは実件数のまま）',
+    async () => {
+      const rows = Array.from({ length: 1005 }, (_, i) => ({
+        householdId: TEST_HOUSEHOLD_ID,
+        transactionDate: new Date(Date.UTC(currentYear, 4, 1)),
+        categoryId: BigInt(categoryId),
+        splitType: 'self' as const,
+        userId: USER_ID,
+        amount: 100 + (i % 900),
+        createdBy: USER_ID,
+      }));
+      await prisma.transaction.createMany({ data: rows });
+
+      const defaultRes = await request(app)
+        .get('/api/v1/transactions')
+        .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+      expect(defaultRes.status).toBe(200);
+      expect(defaultRes.body).toHaveLength(100);
+      expect(defaultRes.headers['x-total-count']).toBe('1005');
+
+      const largeLimitRes = await request(app)
+        .get('/api/v1/transactions?limit=5000')
+        .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+      expect(largeLimitRes.status).toBe(200);
+      expect(largeLimitRes.body).toHaveLength(1000);
+    },
+    20000
+  );
+
   it('keywordでメモ・費目名を部分一致検索でき、X-Total-Countで全件数が返る', async () => {
     await request(app)
       .post('/api/v1/transactions')

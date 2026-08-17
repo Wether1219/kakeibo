@@ -105,11 +105,16 @@ function buildWhere(householdId: bigint, filter: TransactionListFilter): Prisma.
   return where;
 }
 
+// limit未指定時に全件返却されるのを防ぐデフォルト上限（/audit-logsと同じ考え方）。
+// 明示指定時も、データ増加時の防御的な上限としてMAX_LIST_LIMITで丸める。
+const DEFAULT_LIST_LIMIT = 100;
+const MAX_LIST_LIMIT = 1000;
+
 export async function listTransactions(householdId: bigint, filter: TransactionListFilter) {
   return prisma.transaction.findMany({
     where: buildWhere(householdId, filter),
     orderBy: { transactionDate: filter.sort === 'date_asc' ? 'asc' : 'desc' },
-    take: filter.limit,
+    take: Math.min(Math.max(filter.limit ?? DEFAULT_LIST_LIMIT, 1), MAX_LIST_LIMIT),
     skip: filter.offset,
   });
 }
