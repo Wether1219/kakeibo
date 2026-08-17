@@ -113,3 +113,13 @@ export async function deleteTransaction(id: string): Promise<void> {
     throw new Error(body?.error ?? '取引の削除に失敗しました');
   }
 }
+
+// 監査ログ（変更履歴）の削除記録からの復元。auditLogIdは対象の変更履歴（削除操作）のID。
+export async function restoreTransaction(auditLogId: string): Promise<Transaction> {
+  const res = await apiFetch(`/transactions/restore/${auditLogId}`, { method: 'POST' });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? '取引の復元に失敗しました');
+  }
+  return res.json();
+}

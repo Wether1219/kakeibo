@@ -121,28 +121,30 @@ export async function countTransactions(
   return prisma.transaction.count({ where: buildWhere(householdId, filter) });
 }
 
+function buildCreateData(householdId: bigint, createdBy: bigint, data: TransactionInput) {
+  return {
+    householdId,
+    transactionDate: new Date(data.transactionDate),
+    categoryId: data.categoryId,
+    splitType: data.splitType,
+    userId: data.splitType === 'shared' ? null : data.userId ?? null,
+    amount: data.amount,
+    memo: data.memo ?? null,
+    otherPaidAmount: data.otherPaidAmount ?? null,
+    settlementPayerUserId: data.settlementPayerUserId ?? null,
+    settlementBurden: data.settlementBurden ?? null,
+    settlementPartialAmount: data.settlementPartialAmount ?? null,
+    createdBy,
+  };
+}
+
 export async function createTransaction(
   householdId: bigint,
   createdBy: bigint,
   data: TransactionInput
 ) {
   validateInput(data);
-  return prisma.transaction.create({
-    data: {
-      householdId,
-      transactionDate: new Date(data.transactionDate),
-      categoryId: data.categoryId,
-      splitType: data.splitType,
-      userId: data.splitType === 'shared' ? null : data.userId ?? null,
-      amount: data.amount,
-      memo: data.memo ?? null,
-      otherPaidAmount: data.otherPaidAmount ?? null,
-      settlementPayerUserId: data.settlementPayerUserId ?? null,
-      settlementBurden: data.settlementBurden ?? null,
-      settlementPartialAmount: data.settlementPartialAmount ?? null,
-      createdBy,
-    },
-  });
+  return prisma.transaction.create({ data: buildCreateData(householdId, createdBy, data) });
 }
 
 export async function updateTransaction(
@@ -180,4 +182,63 @@ export async function deleteTransaction(householdId: bigint, id: bigint) {
   }
   await prisma.transaction.delete({ where: { id } });
   return { before: existing };
+}
+
+// 削除操作の監査ログ（diff_json.before、routes/transactions.tsのserializeTransactionと同じ形）から
+// 取引を復元する。before値をそのまま使い回すため、対応するフィールドの型変換のみ行う。
+function parseDeletedSnapshot(diffJson: Prisma.JsonValue): TransactionInput & { createdBy: bigint } {
+  const before = (diffJson as { before?: Record<string, unknown> } | null)?.before;
+  if (!before || typeof before !== 'object') {
+    throw new TransactionNotFoundError('復元対象の削除履歴が見つかりません');
+  }
+  const {
+    transactionDate,
+    categoryId,
+    splitType,
+    userId,
+    amount,
+    memo,
+    otherPaidAmount,
+    settlementPayerUserId,
+    settlementBurden,
+    settlementPartialAmount,
+    createdBy,
+  } = before;
+  if (
+    typeof transactionDate !== 'string' ||
+    typeof categoryId !== 'string' ||
+    typeof splitType !== 'string' ||
+    typeof amount !== 'number' ||
+    typeof createdBy !== 'string'
+  ) {
+    throw new TransactionNotFoundError('復元対象の削除履歴の形式が不正です');
+  }
+  return {
+    transactionDate,
+    categoryId: BigInt(categoryId),
+    splitType: splitType as SplitType,
+    userId: typeof userId === 'string' ? BigInt(userId) : null,
+    amount,
+    memo: typeof memo === 'string' ? memo : null,
+    otherPaidAmount: typeof otherPaidAmount === 'number' ? otherPaidAmount : null,
+    settlementPayerUserId: typeof settlementPayerUserId === 'string' ? BigInt(settlementPayerUserId) : null,
+    settlementBurden: (settlementBurden as SettlementBurden | null | undefined) ?? null,
+    settlementPartialAmount: typeof settlementPartialAmount === 'number' ? settlementPartialAmount : null,
+    createdBy: BigInt(createdBy),
+  };
+}
+
+export async function restoreTransaction(householdId: bigint, auditLogId: bigint) {
+  const log = await prisma.auditLog.findFirst({
+    where: { id: auditLogId, householdId, targetTable: 'transactions', action: 'delete' },
+  });
+  if (!log) {
+    // 存在しない/他世帯/対象外アクションのいずれも同一の404にし、他世帯データの存在を推測されないようにする
+    throw new TransactionNotFoundError('復元対象の削除履歴が見つかりません');
+  }
+  const { createdBy, ...data } = parseDeletedSnapshot(log.diffJson);
+  // 削除前の状態を忠実に再現するのが目的のため、意図的にvalidateInputを呼ばない
+  // （新規入力用のバリデーション、例えばA1で追加した取引日の前後1年チェックにより、
+  // 古い削除済み取引が復元できなくなるのを防ぐため）
+  return prisma.transaction.create({ data: buildCreateData(householdId, createdBy, data) });
 }

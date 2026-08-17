@@ -515,4 +515,145 @@ describe('/api/v1/transactions', () => {
       .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
     expect(listRes.body).toHaveLength(0);
   });
+
+  describe('POST /transactions/restore/:auditLogId', () => {
+    it('削除済み取引を監査ログから復元でき、復元操作自体も新規createログとして記録される', async () => {
+      const createRes = await request(app)
+        .post('/api/v1/transactions')
+        .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+        .send(baseBody({ memo: '復元テスト' }));
+      const id = createRes.body.id;
+
+      await request(app)
+        .delete(`/api/v1/transactions/${id}`)
+        .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+
+      const deleteLog = await prisma.auditLog.findFirst({
+        where: {
+          householdId: TEST_HOUSEHOLD_ID,
+          targetTable: 'transactions',
+          action: 'delete',
+          targetId: BigInt(id),
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(deleteLog).not.toBeNull();
+
+      const restoreRes = await request(app)
+        .post(`/api/v1/transactions/restore/${deleteLog!.id}`)
+        .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+      expect(restoreRes.status).toBe(201);
+      expect(restoreRes.body).toMatchObject({ memo: '復元テスト', amount: 1000 });
+      expect(restoreRes.body.id).not.toBe(id);
+
+      const listRes = await request(app)
+        .get('/api/v1/transactions')
+        .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+      expect(listRes.body).toHaveLength(1);
+
+      const createLog = await prisma.auditLog.findFirst({
+        where: {
+          householdId: TEST_HOUSEHOLD_ID,
+          targetTable: 'transactions',
+          action: 'create',
+          targetId: BigInt(restoreRes.body.id),
+        },
+      });
+      expect(createLog).not.toBeNull();
+      expect((createLog!.diffJson as { restoredFromAuditLogId?: string }).restoredFromAuditLogId).toBe(
+        String(deleteLog!.id)
+      );
+    });
+
+    it('他世帯の削除履歴からは復元できない(404)', async () => {
+      const otherCategory = await prisma.category.create({
+        data: { householdId: OTHER_HOUSEHOLD_ID, type: 'variable_expense', name: '光熱費' },
+      });
+      const createRes = await request(app)
+        .post('/api/v1/transactions')
+        .set('Authorization', authHeader(OTHER_HOUSEHOLD_ID, OTHER_USER_ID))
+        .send(baseBody({ categoryId: otherCategory.id.toString() }));
+      const id = createRes.body.id;
+      await request(app)
+        .delete(`/api/v1/transactions/${id}`)
+        .set('Authorization', authHeader(OTHER_HOUSEHOLD_ID, OTHER_USER_ID));
+
+      const deleteLog = await prisma.auditLog.findFirst({
+        where: {
+          householdId: OTHER_HOUSEHOLD_ID,
+          targetTable: 'transactions',
+          action: 'delete',
+          targetId: BigInt(id),
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const res = await request(app)
+        .post(`/api/v1/transactions/restore/${deleteLog!.id}`)
+        .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+      expect(res.status).toBe(404);
+    });
+
+    it('存在しない削除履歴IDを指定した場合は404', async () => {
+      const res = await request(app)
+        .post('/api/v1/transactions/restore/999999999999')
+        .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+      expect(res.status).toBe(404);
+    });
+
+    it('削除以外の監査ログID（作成ログ等）を指定した場合は404', async () => {
+      const createRes = await request(app)
+        .post('/api/v1/transactions')
+        .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+        .send(baseBody());
+      const createLog = await prisma.auditLog.findFirst({
+        where: {
+          householdId: TEST_HOUSEHOLD_ID,
+          targetTable: 'transactions',
+          action: 'create',
+          targetId: BigInt(createRes.body.id),
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const res = await request(app)
+        .post(`/api/v1/transactions/restore/${createLog!.id}`)
+        .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+      expect(res.status).toBe(404);
+    });
+
+    it('A1の前後1年チェックの対象外（それより古い）削除済み取引も復元できる', async () => {
+      const oldDate = `${currentYear - 3}-01-15`;
+      const auditLog = await prisma.auditLog.create({
+        data: {
+          householdId: TEST_HOUSEHOLD_ID,
+          userId: USER_ID,
+          targetTable: 'transactions',
+          targetId: 1n,
+          action: 'delete',
+          diffJson: {
+            before: {
+              transactionDate: oldDate,
+              categoryId,
+              splitType: 'self',
+              userId: USER_ID.toString(),
+              amount: 500,
+              memo: '古いデータ',
+              otherPaidAmount: null,
+              settlementPayerUserId: null,
+              settlementBurden: null,
+              settlementPartialAmount: null,
+              createdBy: USER_ID.toString(),
+            },
+          },
+        },
+      });
+
+      const res = await request(app)
+        .post(`/api/v1/transactions/restore/${auditLog.id}`)
+        .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID));
+      expect(res.status).toBe(201);
+      expect(res.body.transactionDate).toBe(oldDate);
+    });
+  });
 });

@@ -9,6 +9,7 @@ import {
   createTransaction,
   deleteTransaction,
   listTransactions,
+  restoreTransaction,
   updateTransaction,
 } from '../services/transactionService';
 import { recordAuditLog } from '../services/auditLogService';
@@ -270,6 +271,36 @@ transactionsRouter.delete('/:id', async (req: HouseholdRequest, res) => {
       diff: { before: serializeTransaction(before) },
     });
     res.status(204).send();
+  } catch (e) {
+    if (e instanceof TransactionNotFoundError) {
+      res.status(404).json({ error: e.message });
+      return;
+    }
+    throw e;
+  }
+});
+
+// 誤って削除した取引を、変更履歴（監査ログ）の削除記録から復元する。
+// auditLogIdは対象の変更履歴（targetTable='transactions' かつ action='delete'）のID。
+transactionsRouter.post('/restore/:auditLogId', async (req: HouseholdRequest, res) => {
+  if (!/^\d+$/.test(req.params.auditLogId)) {
+    res.status(400).json({ error: 'auditLogIdが不正です' });
+    return;
+  }
+  try {
+    const transaction = await restoreTransaction(req.householdId!, BigInt(req.params.auditLogId));
+    await recordAuditLog({
+      householdId: req.householdId!,
+      userId: req.userId!,
+      targetTable: 'transactions',
+      targetId: transaction.id,
+      action: 'create',
+      diff: {
+        after: serializeTransaction(transaction),
+        restoredFromAuditLogId: req.params.auditLogId,
+      },
+    });
+    res.status(201).json(serializeTransaction(transaction));
   } catch (e) {
     if (e instanceof TransactionNotFoundError) {
       res.status(404).json({ error: e.message });

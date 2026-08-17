@@ -3,8 +3,18 @@ import { User, fetchUsers } from '../api/users';
 import { AuditLog, fetchAuditLogs } from '../api/auditLogs';
 import { downloadExport } from '../api/export';
 import { ImportSummary, importExcel } from '../api/import';
+import { restoreTransaction } from '../api/transactions';
 import { RecurringTransactionsPanel } from '../components/RecurringTransactionsPanel';
 import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
+
+// 復元操作で作成された監査ログのdiffには復元元のログIDが入る（多重復元防止の判定に使用）
+function getRestoredFromAuditLogId(diff: unknown): string | null {
+  if (diff && typeof diff === 'object' && 'restoredFromAuditLogId' in diff) {
+    const value = (diff as { restoredFromAuditLogId?: unknown }).restoredFromAuditLogId;
+    return typeof value === 'string' ? value : null;
+  }
+  return null;
+}
 
 type SettingsTab = 'members' | 'history' | 'export' | 'import' | 'recurring';
 
@@ -57,6 +67,8 @@ export function SC11_Settings() {
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importResult, setImportResult] = useState<ImportSummary | null>(null);
+  const [restoringLogId, setRestoringLogId] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,6 +92,23 @@ export function SC11_Settings() {
   }, []);
 
   const userMap = new Map(users.map((u) => [u.id, u]));
+  const restoredAuditLogIds = new Set(
+    logs.map((l) => getRestoredFromAuditLogId(l.diff)).filter((id): id is string => id !== null)
+  );
+
+  const handleRestore = async (logId: string) => {
+    if (!window.confirm('この取引を復元しますか？')) return;
+    setRestoringLogId(logId);
+    setRestoreError(null);
+    try {
+      await restoreTransaction(logId);
+      setLogs(await fetchAuditLogs({ limit: 100 }));
+    } catch (e) {
+      setRestoreError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRestoringLogId(null);
+    }
+  };
 
   const handleExport = async (format: 'csv' | 'xlsx') => {
     setExporting(format);
@@ -160,27 +189,50 @@ export function SC11_Settings() {
       )}
 
       {!loading && tab === 'history' && (
-        <div className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
-          {logs.length === 0 && (
-            <p className="px-4 py-4 text-sm text-gray-400 dark:text-gray-500">変更履歴がありません</p>
-          )}
-          {logs.map((log) => (
-            <details key={log.id} className="px-4 py-2 text-sm">
-              <summary className="cursor-pointer select-none flex flex-wrap items-center gap-2">
-                <span className="text-gray-400 dark:text-gray-500 w-32 shrink-0">{formatDateTime(log.createdAt)}</span>
-                <span className="w-12 shrink-0 font-bold">{ACTION_LABELS[log.action] ?? log.action}</span>
-                <span className="flex-1 min-w-[6rem]">
-                  {TARGET_TABLE_LABELS[log.targetTable] ?? log.targetTable}
-                </span>
-                <span className="text-gray-500 dark:text-gray-400 shrink-0">
-                  {userMap.get(log.userId)?.displayName ?? '-'}
-                </span>
-              </summary>
-              <pre className="mt-2 bg-gray-50 dark:bg-gray-800 rounded p-2 text-xs overflow-x-auto">
-                {JSON.stringify(log.diff, null, 2)}
-              </pre>
-            </details>
-          ))}
+        <div className="space-y-2">
+          {restoreError && <ErrorMessage>{restoreError}</ErrorMessage>}
+          <div className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
+            {logs.length === 0 && (
+              <p className="px-4 py-4 text-sm text-gray-400 dark:text-gray-500">変更履歴がありません</p>
+            )}
+            {logs.map((log) => {
+              const isDeletedTransaction = log.targetTable === 'transactions' && log.action === 'delete';
+              const isRestored = restoredAuditLogIds.has(log.id);
+              return (
+                <details key={log.id} className="px-4 py-2 text-sm">
+                  <summary className="cursor-pointer select-none flex flex-wrap items-center gap-2">
+                    <span className="text-gray-400 dark:text-gray-500 w-32 shrink-0">{formatDateTime(log.createdAt)}</span>
+                    <span className="w-12 shrink-0 font-bold">{ACTION_LABELS[log.action] ?? log.action}</span>
+                    <span className="flex-1 min-w-[6rem]">
+                      {TARGET_TABLE_LABELS[log.targetTable] ?? log.targetTable}
+                    </span>
+                    <span className="text-gray-500 dark:text-gray-400 shrink-0">
+                      {userMap.get(log.userId)?.displayName ?? '-'}
+                    </span>
+                  </summary>
+                  <pre className="mt-2 bg-gray-50 dark:bg-gray-800 rounded p-2 text-xs overflow-x-auto">
+                    {JSON.stringify(log.diff, null, 2)}
+                  </pre>
+                  {isDeletedTransaction && (
+                    <div className="mt-2">
+                      {isRestored ? (
+                        <span className="text-xs text-gray-400 dark:text-gray-500">復元済み</span>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={restoringLogId !== null}
+                          onClick={() => handleRestore(log.id)}
+                          className="text-xs bg-blue-600 text-white rounded px-3 py-1 hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {restoringLogId === log.id ? '復元中...' : 'この取引を復元'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </details>
+              );
+            })}
+          </div>
         </div>
       )}
 

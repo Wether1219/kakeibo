@@ -8,7 +8,9 @@ export interface AuditLogEntry {
   targetId: bigint;
   action: AuditAction;
   // before/afterはJSONシリアライズ済み（BigInt/Decimalを含まない）状態で渡すこと
-  diff: { before?: unknown; after?: unknown };
+  // restoredFromAuditLogIdは、監査ログからの復元（transactionService.restoreTransaction等）で
+  // 作成されたレコードにのみ付与し、復元元の削除ログIDを指す（多重復元防止のフロント判定に使用）
+  diff: { before?: unknown; after?: unknown; restoredFromAuditLogId?: string };
 }
 
 function toDiffJson(diff: AuditLogEntry['diff']): Prisma.InputJsonValue {
