@@ -12,7 +12,7 @@ export function useCategories() {
     setError(null);
     try {
       const data = await api.fetchCategories();
-      setCategories(data.filter((c) => c.isActive));
+      setCategories(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -56,6 +56,15 @@ export function useCategories() {
     [reload]
   );
 
+  const reactivate = useCallback(
+    async (category: Category) => {
+      // 無効化済みと同じ区分・名前で追加すると、バックエンド側が再有効化として扱う
+      await api.createCategory({ type: category.type, name: category.name, icon: category.icon ?? undefined });
+      await reload();
+    },
+    [reload]
+  );
+
   const reorder = useCallback(async (reordered: Category[]) => {
     setCategories(reordered);
     await Promise.all(
@@ -63,5 +72,5 @@ export function useCategories() {
     );
   }, []);
 
-  return { categories, loading, error, add, rename, changeIcon, deactivate, reorder };
+  return { categories, loading, error, add, rename, changeIcon, deactivate, reactivate, reorder };
 }

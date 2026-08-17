@@ -86,7 +86,11 @@ export function CategoryTypeSection({
             <button
               type="button"
               className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2"
-              onClick={() => onDeactivate(c.id)}
+              onClick={() => {
+                if (window.confirm(`「${c.name}」を無効化しますか？`)) {
+                  onDeactivate(c.id);
+                }
+              }}
             >
               無効化
             </button>
