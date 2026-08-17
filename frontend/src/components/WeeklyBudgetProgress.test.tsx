@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { WeeklyBudgetProgress } from './WeeklyBudgetProgress';
+import { WeeklyBudgetProgress, countOverBudgetCategories } from './WeeklyBudgetProgress';
 import type { WeeklyBudgetWithActual } from '../api/weeklyBudgets';
 
 function row(overrides: Partial<WeeklyBudgetWithActual>): WeeklyBudgetWithActual {
@@ -52,5 +52,21 @@ describe('WeeklyBudgetProgress', () => {
   it('予算が設定されている費目がない場合はメッセージを表示する', () => {
     render(<WeeklyBudgetProgress rows={[row({ budgetAmount: 0, actualAmount: 0 })]} />);
     expect(screen.getByText('予算が設定されていません')).toBeInTheDocument();
+  });
+});
+
+// DashboardAlertBannerからも利用する集計関数（ダッシュボードの超過アラートバナー用）
+describe('countOverBudgetCategories', () => {
+  it('超過している費目件数を返す', () => {
+    expect(
+      countOverBudgetCategories([
+        row({ categoryId: 'c1', budgetAmount: 5000, actualAmount: 6000 }),
+        row({ categoryId: 'c2', budgetAmount: 3000, actualAmount: 1000 }),
+      ])
+    ).toBe(1);
+  });
+
+  it('超過がなければ0を返す', () => {
+    expect(countOverBudgetCategories([row({ budgetAmount: 5000, actualAmount: 3000 })])).toBe(0);
   });
 });

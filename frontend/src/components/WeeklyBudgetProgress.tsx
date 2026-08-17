@@ -36,9 +36,14 @@ function aggregateByCategory(rows: WeeklyBudgetWithActual[]): CategoryTotal[] {
   return Array.from(map.values()).filter((c) => c.budgetAmount > 0);
 }
 
+// ダッシュボードの超過アラートバナー（DashboardAlertBanner）からも利用する
+export function countOverBudgetCategories(rows: WeeklyBudgetWithActual[]): number {
+  return aggregateByCategory(rows).filter((c) => c.actualAmount > c.budgetAmount).length;
+}
+
 export function WeeklyBudgetProgress({ rows }: Props) {
   const totals = aggregateByCategory(rows);
-  const overCount = totals.filter((c) => c.actualAmount > c.budgetAmount).length;
+  const overCount = countOverBudgetCategories(rows);
 
   return (
     <section>

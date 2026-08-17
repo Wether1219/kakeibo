@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BalanceSummaryCard } from '../components/BalanceSummaryCard';
+import { DashboardAlertBanner } from '../components/DashboardAlertBanner';
 import { ExpensePieCharts } from '../components/ExpensePieCharts';
 import { MonthSelector } from '../components/MonthSelector';
 import { RecentTransactions } from '../components/RecentTransactions';
 import { SettlementCard } from '../components/SettlementCard';
 import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
-import { WeeklyBudgetProgress } from '../components/WeeklyBudgetProgress';
+import { WeeklyBudgetProgress, countOverBudgetCategories } from '../components/WeeklyBudgetProgress';
 import { useDashboard } from '../hooks/useDashboard';
 import { useMonthlySettlement } from '../hooks/useMonthlySettlement';
 import { useYearMonthParams } from '../hooks/useYearMonthParams';
@@ -36,6 +37,15 @@ export function SC02_Dashboard() {
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6">
       <MonthSelector year={year} month={month} onChange={handleChangeMonth} />
+
+      {!loading && !settlementLoading && (
+        <DashboardAlertBanner
+          year={year}
+          month={month}
+          overBudgetCount={countOverBudgetCategories(weeklyBudgets)}
+          settlement={settlement}
+        />
+      )}
 
       {loading && <LoadingMessage />}
       {error && <ErrorMessage>{error}</ErrorMessage>}
