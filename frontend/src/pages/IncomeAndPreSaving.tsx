@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import { useIncomeAndPreSavingForm } from '../hooks/useIncomeAndPreSavingForm';
+import { useYearMonthParams } from '../hooks/useYearMonthParams';
 import { IncomeGrid } from '../components/IncomeGrid';
 import { PreSavingGrid } from '../components/PreSavingGrid';
 import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 
-const now = new Date();
-
 export function IncomeAndPreSaving() {
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const { year, month, setYearMonth } = useYearMonthParams();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const {
@@ -49,7 +47,7 @@ export function IncomeAndPreSaving() {
             type="number"
             className="w-24 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
             value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
+            onChange={(e) => setYearMonth(Number(e.target.value), month)}
           />
         </div>
         <div>
@@ -58,7 +56,7 @@ export function IncomeAndPreSaving() {
             id="income-month"
             className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
             value={month}
-            onChange={(e) => setMonth(Number(e.target.value))}
+            onChange={(e) => setYearMonth(year, Number(e.target.value))}
           >
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
               <option key={m} value={m}>
