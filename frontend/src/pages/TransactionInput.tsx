@@ -133,33 +133,28 @@ export function TransactionInput() {
             />
           </div>
 
-          <details className="text-sm">
-            <summary className="text-gray-500 dark:text-gray-400 cursor-pointer select-none">
-              日付・メモ（任意）
-            </summary>
-            <div className="mt-2 space-y-3">
-              <div>
-                <label htmlFor="tx-input-date" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">日付</label>
-                <input
-                  id="tx-input-date"
-                  type="date"
-                  className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
-                  value={transactionDate}
-                  onChange={(e) => setTransactionDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <label htmlFor="tx-input-memo" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">メモ</label>
-                <input
-                  id="tx-input-memo"
-                  type="text"
-                  className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
-                  value={memo}
-                  onChange={(e) => setMemo(e.target.value)}
-                />
-              </div>
+          <div className="text-sm space-y-3">
+            <div>
+              <label htmlFor="tx-input-date" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">日付</label>
+              <input
+                id="tx-input-date"
+                type="date"
+                className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
+                value={transactionDate}
+                onChange={(e) => setTransactionDate(e.target.value)}
+              />
             </div>
-          </details>
+            <div>
+              <label htmlFor="tx-input-memo" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">メモ</label>
+              <input
+                id="tx-input-memo"
+                type="text"
+                className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
+                value={memo}
+                onChange={(e) => setMemo(e.target.value)}
+              />
+            </div>
+          </div>
 
           <SettlementFormSection value={settlement} onChange={setSettlement} users={users} amount={amount} />
 
