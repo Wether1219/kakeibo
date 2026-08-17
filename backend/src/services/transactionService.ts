@@ -62,7 +62,7 @@ function validateInput(data: TransactionInput) {
   }
 }
 
-export type TransactionSort = 'date_desc';
+export type TransactionSort = 'date_desc' | 'date_asc';
 
 export interface TransactionListFilter {
   year?: number;
@@ -108,7 +108,7 @@ function buildWhere(householdId: bigint, filter: TransactionListFilter): Prisma.
 export async function listTransactions(householdId: bigint, filter: TransactionListFilter) {
   return prisma.transaction.findMany({
     where: buildWhere(householdId, filter),
-    orderBy: { transactionDate: 'desc' },
+    orderBy: { transactionDate: filter.sort === 'date_asc' ? 'asc' : 'desc' },
     take: filter.limit,
     skip: filter.offset,
   });

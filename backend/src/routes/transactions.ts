@@ -170,7 +170,7 @@ transactionsRouter.get('/', async (req: HouseholdRequest, res) => {
     res.status(400).json({ error: 'offsetが不正です' });
     return;
   }
-  if (sort !== undefined && sort !== 'date_desc') {
+  if (sort !== undefined && sort !== 'date_desc' && sort !== 'date_asc') {
     res.status(400).json({ error: 'sortが不正です' });
     return;
   }
@@ -183,7 +183,7 @@ transactionsRouter.get('/', async (req: HouseholdRequest, res) => {
     userId: target !== undefined && target !== 'shared' ? BigInt(String(target)) : undefined,
     limit: limit !== undefined ? Number(limit) : undefined,
     offset: offset !== undefined ? Number(offset) : undefined,
-    sort: sort as 'date_desc' | undefined,
+    sort: sort as 'date_desc' | 'date_asc' | undefined,
   };
   const [transactions, total] = await Promise.all([
     listTransactions(req.householdId!, filter),

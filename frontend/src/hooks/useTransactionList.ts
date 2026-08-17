@@ -48,7 +48,7 @@ export function useTransactionList(
       categoryId: categoryId || undefined,
       target: target || undefined,
       keyword: keyword || undefined,
-      sort: 'date_desc',
+      sort: 'date_asc',
       limit: TRANSACTION_PAGE_SIZE,
       offset: page * TRANSACTION_PAGE_SIZE,
     })

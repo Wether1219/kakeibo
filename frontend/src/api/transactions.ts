@@ -41,7 +41,7 @@ export interface TransactionListParams {
   // 対象者フィルタ。'shared'（共通）または対象ユーザーのuserIdを指定する。
   target?: string;
   limit?: number;
-  sort?: 'date_desc';
+  sort?: 'date_desc' | 'date_asc';
 }
 
 function buildTransactionQuery(params: TransactionListParams & { keyword?: string; offset?: number }) {
