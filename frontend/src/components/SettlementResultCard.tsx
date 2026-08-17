@@ -1,10 +1,10 @@
-import { SettlementDirection, SettlementUser } from '../api/summary';
+import { SettlementDirection, SettlementUserSummary } from '../api/settlements';
 
 interface Props {
   direction: SettlementDirection;
   amount: number;
-  fromUser: SettlementUser | null;
-  toUser: SettlementUser | null;
+  fromUser: SettlementUserSummary | null;
+  toUser: SettlementUserSummary | null;
 }
 
 function formatYen(amount: number): string {

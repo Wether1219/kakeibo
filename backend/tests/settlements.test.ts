@@ -34,11 +34,12 @@ async function createTransaction(opts: {
   settlementPayerUserId?: bigint | null;
   settlementBurden?: 'half' | 'other_full' | null;
   settlementPartialAmount?: number | null;
+  transactionDate?: Date;
 }) {
   await prisma.transaction.create({
     data: {
       householdId: opts.householdId,
-      transactionDate: new Date(Date.UTC(YEAR, MONTH - 1, 10)),
+      transactionDate: opts.transactionDate ?? new Date(Date.UTC(YEAR, MONTH - 1, 10)),
       categoryId,
       splitType: 'self',
       userId: opts.createdBy,
@@ -199,5 +200,72 @@ describe('GET /api/v1/settlements', () => {
     expect(res.status).toBe(200);
     expect(res.body.transactionCount).toBe(1);
     expect(res.body.amount).toBe(1000);
+  });
+
+  // 以下3件は旧`/summary/settlement`（tests/settlement.test.ts、D1でエンドポイント統合のため削除）から移植
+  it('相手がその場で払った額（settlementPartialAmount）が差し引かれる', async () => {
+    // Aが立て替えて折半（fairShare=40000円）、既に40000円その場でもらっているため精算不要
+    await createTransaction({
+      householdId: TEST_HOUSEHOLD_ID,
+      createdBy: USER_A,
+      amount: 80000,
+      settlementPayerUserId: USER_A,
+      settlementBurden: 'half',
+      settlementPartialAmount: 40000,
+    });
+
+    const res = await request(app)
+      .get('/api/v1/settlements')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
+      .query({ year: YEAR, month: MONTH });
+    expect(res.status).toBe(200);
+    expect(res.body.direction).toBe('NONE');
+  });
+
+  it('全額相手負担（other_full）のみの場合、立替額全額が精算対象になる', async () => {
+    await createTransaction({
+      householdId: TEST_HOUSEHOLD_ID,
+      createdBy: USER_B,
+      amount: 3000,
+      settlementPayerUserId: USER_B,
+      settlementBurden: 'other_full',
+    });
+
+    const res = await request(app)
+      .get('/api/v1/settlements')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
+      .query({ year: YEAR, month: MONTH });
+    expect(res.status).toBe(200);
+    expect(res.body.direction).toBe('A_TO_B');
+    expect(res.body.amount).toBe(3000);
+    expect(res.body.fromUser.displayName).toBe('たいよう');
+    expect(res.body.toUser.displayName).toBe('みらの');
+  });
+
+  it('対象月以外の取引は集計に含まれない', async () => {
+    await createTransaction({
+      householdId: TEST_HOUSEHOLD_ID,
+      createdBy: USER_A,
+      amount: 4000,
+      settlementPayerUserId: USER_A,
+      settlementBurden: 'half',
+      transactionDate: new Date(Date.UTC(YEAR, MONTH - 2, 28)), // 前月
+    });
+    await createTransaction({
+      householdId: TEST_HOUSEHOLD_ID,
+      createdBy: USER_A,
+      amount: 4000,
+      settlementPayerUserId: USER_A,
+      settlementBurden: 'half',
+      transactionDate: new Date(Date.UTC(YEAR, MONTH, 1)), // 翌月
+    });
+
+    const res = await request(app)
+      .get('/api/v1/settlements')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
+      .query({ year: YEAR, month: MONTH });
+    expect(res.status).toBe(200);
+    expect(res.body.direction).toBe('NONE');
+    expect(res.body.transactionCount).toBe(0);
   });
 });

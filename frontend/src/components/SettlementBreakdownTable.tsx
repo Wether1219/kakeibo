@@ -1,4 +1,4 @@
-import { SettlementBreakdown } from '../api/summary';
+import { SettlementBreakdown } from '../api/settlements';
 
 interface Props {
   breakdown: SettlementBreakdown;

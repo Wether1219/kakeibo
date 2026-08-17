@@ -2,12 +2,12 @@ import { MonthSelector } from '../components/MonthSelector';
 import { SettlementBreakdownTable } from '../components/SettlementBreakdownTable';
 import { SettlementResultCard } from '../components/SettlementResultCard';
 import { useYearMonthParams } from '../hooks/useYearMonthParams';
-import { useSettlementSummary } from '../hooks/useSettlementSummary';
+import { useMonthlySettlement } from '../hooks/useMonthlySettlement';
 import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 
 export function Settlement() {
   const { year, month, setYearMonth } = useYearMonthParams();
-  const { summary, loading, error } = useSettlementSummary(year, month);
+  const { settlement, loading, error } = useMonthlySettlement(year, month);
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6">
@@ -17,15 +17,15 @@ export function Settlement() {
       {loading && <LoadingMessage className="text-center" />}
       {error && <ErrorMessage className="text-center">{error}</ErrorMessage>}
 
-      {summary && !loading && !error && (
+      {settlement && !loading && !error && (
         <>
           <SettlementResultCard
-            direction={summary.direction}
-            amount={summary.amount}
-            fromUser={summary.fromUser}
-            toUser={summary.toUser}
+            direction={settlement.direction}
+            amount={settlement.amount}
+            fromUser={settlement.fromUser}
+            toUser={settlement.toUser}
           />
-          <SettlementBreakdownTable breakdown={summary.breakdown} />
+          <SettlementBreakdownTable breakdown={settlement.breakdown} />
         </>
       )}
     </div>
