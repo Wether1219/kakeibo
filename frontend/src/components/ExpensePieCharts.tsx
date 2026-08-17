@@ -14,19 +14,26 @@ interface Props {
   variableExpenseByCategory: MonthlySummaryCategoryRow[];
 }
 
-function toChartData(rows: MonthlySummaryCategoryRow[], userId: string | undefined, palette: readonly string[]) {
+const TOTAL_KEY = 'total' as const;
+type ActiveKey = string | typeof TOTAL_KEY;
+
+export function sumAmounts(amounts: Record<string, number>): number {
+  return Object.values(amounts).reduce((sum, v) => sum + v, 0);
+}
+
+function toChartData(rows: MonthlySummaryCategoryRow[], activeKey: ActiveKey, palette: readonly string[]) {
   const labels = rows.map((r) => `${r.icon ?? ''}${r.name}`);
-  const data = rows.map((r) => (userId ? (r.amounts[userId] ?? 0) : 0));
+  const data = rows.map((r) => (activeKey === TOTAL_KEY ? sumAmounts(r.amounts) : r.amounts[activeKey] ?? 0));
   const colors = rows.map((_, i) => palette[i % palette.length]);
   return { labels, data, colors };
 }
 
 export function ExpensePieCharts({ members, fixedExpenseByCategory, variableExpenseByCategory }: Props) {
-  const [activeUserId, setActiveUserId] = useState<string | undefined>(members[0]?.userId);
-  const currentUserId = activeUserId ?? members[0]?.userId;
+  const [activeKey, setActiveKey] = useState<ActiveKey | undefined>(members[0]?.userId);
+  const currentKey: ActiveKey = activeKey ?? members[0]?.userId ?? TOTAL_KEY;
 
-  const fixed = toChartData(fixedExpenseByCategory, currentUserId, FIXED_EXPENSE_COLORS);
-  const variable = toChartData(variableExpenseByCategory, currentUserId, VARIABLE_EXPENSE_COLORS);
+  const fixed = toChartData(fixedExpenseByCategory, currentKey, FIXED_EXPENSE_COLORS);
+  const variable = toChartData(variableExpenseByCategory, currentKey, VARIABLE_EXPENSE_COLORS);
 
   return (
     <section>
@@ -36,9 +43,9 @@ export function ExpensePieCharts({ members, fixedExpenseByCategory, variableExpe
           <button
             key={m.userId}
             type="button"
-            onClick={() => setActiveUserId(m.userId)}
+            onClick={() => setActiveKey(m.userId)}
             className={`px-3 py-1 text-sm rounded ${
-              currentUserId === m.userId
+              currentKey === m.userId
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
@@ -46,6 +53,17 @@ export function ExpensePieCharts({ members, fixedExpenseByCategory, variableExpe
             {m.displayName}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => setActiveKey(TOTAL_KEY)}
+          className={`px-3 py-1 text-sm rounded ${
+            currentKey === TOTAL_KEY
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+          }`}
+        >
+          世帯合計
+        </button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
