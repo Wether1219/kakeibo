@@ -50,7 +50,7 @@ afterAll(async () => {
   await prisma.transaction.deleteMany({
     where: { householdId: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } },
   });
-  await prisma.category.deleteMany({ where: { householdId: TEST_HOUSEHOLD_ID } });
+  await prisma.category.deleteMany({ where: { householdId: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } } });
   await prisma.user.deleteMany({ where: { id: { in: [USER_ID, OTHER_USER_ID, SETTLEMENT_PARTNER_USER_ID] } } });
   await prisma.household.deleteMany({ where: { id: { in: [TEST_HOUSEHOLD_ID, OTHER_HOUSEHOLD_ID] } } });
   await prisma.$disconnect();
@@ -128,12 +128,46 @@ describe('/api/v1/transactions', () => {
     expect(res.status).toBe(400);
   });
 
-  it('当年内でない日付は400', async () => {
+  it('前後1年より古い日付は400', async () => {
     const res = await request(app)
       .post('/api/v1/transactions')
       .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
-      .send(baseBody({ transactionDate: `${currentYear - 1}-05-10` }));
+      .send(baseBody({ transactionDate: `${currentYear - 2}-05-10` }));
     expect(res.status).toBe(400);
+  });
+
+  it('前後1年より先の日付は400', async () => {
+    const res = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ transactionDate: `${currentYear + 2}-05-10` }));
+    expect(res.status).toBe(400);
+  });
+
+  it('前年・翌年の日付は登録できる（年またぎの記帳漏れ対応）', async () => {
+    const lastYearRes = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ transactionDate: `${currentYear - 1}-12-31` }));
+    expect(lastYearRes.status).toBe(201);
+
+    const nextYearRes = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ transactionDate: `${currentYear + 1}-01-01` }));
+    expect(nextYearRes.status).toBe(201);
+  });
+
+  it('更新時も前後1年より古い日付は400', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/transactions')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody());
+    const updateRes = await request(app)
+      .put(`/api/v1/transactions/${createRes.body.id}`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_ID))
+      .send(baseBody({ transactionDate: `${currentYear - 2}-05-10` }));
+    expect(updateRes.status).toBe(400);
   });
 
   it('year・monthで絞り込める', async () => {

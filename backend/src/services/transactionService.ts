@@ -23,8 +23,8 @@ function validateInput(data: TransactionInput) {
     throw new TransactionValidationError('取引日が不正です');
   }
   const currentYear = new Date().getFullYear();
-  if (date.getFullYear() !== currentYear) {
-    throw new TransactionValidationError('取引日は当年内である必要があります');
+  if (date.getFullYear() < currentYear - 1 || date.getFullYear() > currentYear + 1) {
+    throw new TransactionValidationError('取引日は前後1年以内の日付である必要があります');
   }
   if (!Number.isInteger(data.amount) || data.amount < 1) {
     throw new TransactionValidationError('金額は1円以上の整数である必要があります');
