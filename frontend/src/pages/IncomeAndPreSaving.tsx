@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useIncomeAndPreSavingForm } from '../hooks/useIncomeAndPreSavingForm';
 import { useYearMonthParams } from '../hooks/useYearMonthParams';
 import { IncomeGrid } from '../components/IncomeGrid';
@@ -7,7 +6,6 @@ import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 
 export function IncomeAndPreSaving() {
   const { year, month, setYearMonth } = useYearMonthParams();
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const {
     users,
@@ -17,23 +15,13 @@ export function IncomeAndPreSaving() {
     preSavingBudgets,
     preSavingActuals,
     loading,
-    saving,
     error,
     setIncomeAmount,
     setPreSavingBudget,
     setPreSavingActual,
-    save,
+    isIncomeSaving,
+    isPreSavingSaving,
   } = useIncomeAndPreSavingForm(year, month);
-
-  const handleSave = async () => {
-    setSaveMessage(null);
-    try {
-      await save();
-      setSaveMessage('保存しました');
-    } catch {
-      // エラーはuseIncomeAndPreSavingFormのerrorステートで表示される
-    }
-  };
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -78,6 +66,7 @@ export function IncomeAndPreSaving() {
               categories={incomeCategories}
               users={users}
               values={incomeValues}
+              isSaving={isIncomeSaving}
               onChange={setIncomeAmount}
             />
           </section>
@@ -89,22 +78,13 @@ export function IncomeAndPreSaving() {
               users={users}
               budgets={preSavingBudgets}
               actuals={preSavingActuals}
+              isSaving={isPreSavingSaving}
               onBudgetChange={setPreSavingBudget}
               onActualChange={setPreSavingActual}
             />
           </section>
 
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="bg-blue-600 text-white rounded px-4 py-1.5 hover:bg-blue-700 disabled:opacity-50"
-            >
-              {saving ? '保存中...' : '保存'}
-            </button>
-            {saveMessage && <span className="text-sm text-green-600 dark:text-green-400">{saveMessage}</span>}
-          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500">入力内容は自動的に保存されます</p>
         </>
       )}
     </div>

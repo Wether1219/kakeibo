@@ -7,6 +7,7 @@ interface Props {
   budgets: Record<string, number>;
   actuals: Record<string, number>;
   suggestedCells?: Set<string>;
+  isSaving?: (weekNo: number, categoryId: string) => boolean;
   onBudgetChange: (weekNo: number, categoryId: string, amount: number) => void;
 }
 
@@ -16,6 +17,7 @@ export function WeeklyBudgetGrid({
   budgets,
   actuals,
   suggestedCells,
+  isSaving,
   onBudgetChange,
 }: Props) {
   return (
@@ -71,6 +73,9 @@ export function WeeklyBudgetGrid({
                         value={budget}
                         onChange={(e) => onBudgetChange(w, c.id, Number(e.target.value))}
                       />
+                      {isSaving?.(w, c.id) && (
+                        <span className="block text-xs text-gray-400 dark:text-gray-500">保存中...</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
                       <span>{actual.toLocaleString()}</span>

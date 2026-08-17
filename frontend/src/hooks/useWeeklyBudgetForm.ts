@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as weeklyBudgetsApi from '../api/weeklyBudgets';
 
 export interface WeeklyBudgetCategory {
@@ -6,6 +6,8 @@ export interface WeeklyBudgetCategory {
   name: string;
   icon: string | null;
 }
+
+const DEBOUNCE_MS = 500;
 
 function cellKey(weekNo: number, categoryId: string) {
   return `${weekNo}:${categoryId}`;
@@ -18,8 +20,9 @@ export function useWeeklyBudgetForm(year: number, month: number) {
   const [actuals, setActuals] = useState<Record<string, number>>({});
   const [suggestedCells, setSuggestedCells] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savingCells, setSavingCells] = useState<Set<string>>(new Set());
+  const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const load = useCallback(() => {
     setLoading(true);
@@ -71,41 +74,54 @@ export function useWeeklyBudgetForm(year: number, month: number) {
     load();
   }, [load]);
 
-  const setBudget = useCallback((weekNo: number, categoryId: string, amount: number) => {
-    const key = cellKey(weekNo, categoryId);
-    setBudgets((prev) => ({ ...prev, [key]: amount }));
-    setSuggestedCells((prev) => {
-      if (!prev.has(key)) return prev;
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
-    });
-  }, []);
+  useEffect(() => {
+    return () => {
+      timers.current.forEach((timer) => clearTimeout(timer));
+      timers.current.clear();
+    };
+  }, [year, month]);
 
-  const save = useCallback(async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      const items = weeks.flatMap((weekNo) =>
-        categories.map((c) => ({
-          year,
-          month,
-          weekNo,
-          categoryId: c.id,
-          budgetAmount: budgets[cellKey(weekNo, c.id)] ?? 0,
-        }))
-      );
-      if (items.length > 0) {
-        await weeklyBudgetsApi.bulkUpdateWeeklyBudgets(items);
-      }
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      throw e;
-    } finally {
-      setSaving(false);
-    }
-  }, [weeks, categories, budgets, year, month, load]);
+  const setBudget = useCallback(
+    (weekNo: number, categoryId: string, amount: number) => {
+      const key = cellKey(weekNo, categoryId);
+      setBudgets((prev) => ({ ...prev, [key]: amount }));
+      setSuggestedCells((prev) => {
+        if (!prev.has(key)) return prev;
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+
+      const existingTimer = timers.current.get(key);
+      if (existingTimer) clearTimeout(existingTimer);
+      setSavingCells((prev) => new Set(prev).add(key));
+
+      const timer = setTimeout(async () => {
+        timers.current.delete(key);
+        try {
+          await weeklyBudgetsApi.bulkUpdateWeeklyBudgets([
+            { year, month, weekNo, categoryId, budgetAmount: amount },
+          ]);
+          // 他セルの実績・自動算出額はこのセルの保存によって変わらないため、全体reloadは行わない
+        } catch (e) {
+          setError(e instanceof Error ? e.message : String(e));
+        } finally {
+          setSavingCells((prev) => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+        }
+      }, DEBOUNCE_MS);
+      timers.current.set(key, timer);
+    },
+    [year, month]
+  );
+
+  const isSaving = useCallback(
+    (weekNo: number, categoryId: string) => savingCells.has(cellKey(weekNo, categoryId)),
+    [savingCells]
+  );
 
   return {
     categories,
@@ -114,9 +130,8 @@ export function useWeeklyBudgetForm(year: number, month: number) {
     actuals,
     suggestedCells,
     loading,
-    saving,
     error,
     setBudget,
-    save,
+    isSaving,
   };
 }

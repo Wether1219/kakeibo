@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useWeeklyBudgetForm } from '../hooks/useWeeklyBudgetForm';
 import { useYearMonthParams } from '../hooks/useYearMonthParams';
 import { WeeklyBudgetGrid } from '../components/WeeklyBudgetGrid';
@@ -6,20 +5,9 @@ import { ErrorMessage, LoadingMessage } from '../components/StatusMessage';
 
 export function WeeklyBudget() {
   const { year, month, setYearMonth } = useYearMonthParams();
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  const { categories, weeks, budgets, actuals, suggestedCells, loading, saving, error, setBudget, save } =
+  const { categories, weeks, budgets, actuals, suggestedCells, loading, error, setBudget, isSaving } =
     useWeeklyBudgetForm(year, month);
-
-  const handleSave = async () => {
-    setSaveMessage(null);
-    try {
-      await save();
-      setSaveMessage('保存しました');
-    } catch {
-      // エラーはuseWeeklyBudgetFormのerrorステートで表示される
-    }
-  };
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -57,35 +45,23 @@ export function WeeklyBudget() {
       {error && <ErrorMessage className="mb-4">{error}</ErrorMessage>}
 
       {!loading && (
-        <>
-          <section className="mb-8">
-            <WeeklyBudgetGrid
-              categories={categories}
-              weeks={weeks}
-              budgets={budgets}
-              actuals={actuals}
-              suggestedCells={suggestedCells}
-              onBudgetChange={setBudget}
-            />
-            {suggestedCells.size > 0 && (
-              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                黄色背景の予算は前月までの実績から自動算出した金額です（未保存。編集・保存できます）
-              </p>
-            )}
-          </section>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="bg-blue-600 text-white rounded px-4 py-1.5 hover:bg-blue-700 disabled:opacity-50"
-            >
-              {saving ? '保存中...' : '保存'}
-            </button>
-            {saveMessage && <span className="text-sm text-green-600 dark:text-green-400">{saveMessage}</span>}
-          </div>
-        </>
+        <section className="mb-8">
+          <WeeklyBudgetGrid
+            categories={categories}
+            weeks={weeks}
+            budgets={budgets}
+            actuals={actuals}
+            suggestedCells={suggestedCells}
+            isSaving={isSaving}
+            onBudgetChange={setBudget}
+          />
+          {suggestedCells.size > 0 && (
+            <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+              黄色背景の予算は前月までの実績から自動算出した金額です（未編集。入力すると自動保存されます）
+            </p>
+          )}
+          <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">入力内容は自動的に保存されます</p>
+        </section>
       )}
     </div>
   );

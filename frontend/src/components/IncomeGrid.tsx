@@ -5,10 +5,11 @@ interface Props {
   categories: Category[];
   users: User[];
   values: Record<string, number>;
+  isSaving?: (userId: string, categoryId: string) => boolean;
   onChange: (userId: string, categoryId: string, amount: number) => void;
 }
 
-export function IncomeGrid({ categories, users, values, onChange }: Props) {
+export function IncomeGrid({ categories, users, values, isSaving, onChange }: Props) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full border border-gray-200 dark:border-gray-700 text-sm">
@@ -43,6 +44,9 @@ export function IncomeGrid({ categories, users, values, onChange }: Props) {
                       value={values[key] ?? 0}
                       onChange={(e) => onChange(u.id, c.id, Number(e.target.value))}
                     />
+                    {isSaving?.(u.id, c.id) && (
+                      <span className="block text-xs text-gray-400 dark:text-gray-500">保存中...</span>
+                    )}
                   </td>
                 );
               })}

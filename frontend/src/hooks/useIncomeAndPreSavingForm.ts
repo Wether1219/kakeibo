@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as categoriesApi from '../api/categories';
 import * as usersApi from '../api/users';
 import * as incomesApi from '../api/incomes';
 import * as preSavingsApi from '../api/preSavings';
 import type { Category } from '../api/categories';
 import type { User } from '../api/users';
+
+const DEBOUNCE_MS = 500;
 
 function cellKey(userId: string, categoryId: string) {
   return `${userId}:${categoryId}`;
@@ -18,8 +20,16 @@ export function useIncomeAndPreSavingForm(year: number, month: number) {
   const [preSavingBudgets, setPreSavingBudgets] = useState<Record<string, number>>({});
   const [preSavingActuals, setPreSavingActuals] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savingIncomeCells, setSavingIncomeCells] = useState<Set<string>>(new Set());
+  const [savingPreSavingCells, setSavingPreSavingCells] = useState<Set<string>>(new Set());
+
+  // pre_savingsはbudgetAmount/actualAmountを同一行・同一APIで一括更新するため、
+  // デバウンス発火時にどちらか片方が古い値のまま送信されないよう、常に最新値をrefで保持する
+  const preSavingBudgetsRef = useRef<Record<string, number>>({});
+  const preSavingActualsRef = useRef<Record<string, number>>({});
+  const incomeTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const preSavingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +61,8 @@ export function useIncomeAndPreSavingForm(year: number, month: number) {
         });
         setPreSavingBudgets(nextBudgets);
         setPreSavingActuals(nextActuals);
+        preSavingBudgetsRef.current = nextBudgets;
+        preSavingActualsRef.current = nextActuals;
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
@@ -63,54 +75,107 @@ export function useIncomeAndPreSavingForm(year: number, month: number) {
     };
   }, [year, month]);
 
-  const setIncomeAmount = useCallback((userId: string, categoryId: string, amount: number) => {
-    setIncomeValues((prev) => ({ ...prev, [cellKey(userId, categoryId)]: amount }));
-  }, []);
+  useEffect(() => {
+    return () => {
+      incomeTimers.current.forEach((timer) => clearTimeout(timer));
+      incomeTimers.current.clear();
+      preSavingTimers.current.forEach((timer) => clearTimeout(timer));
+      preSavingTimers.current.clear();
+    };
+  }, [year, month]);
 
-  const setPreSavingBudget = useCallback((userId: string, categoryId: string, amount: number) => {
-    setPreSavingBudgets((prev) => ({ ...prev, [cellKey(userId, categoryId)]: amount }));
-  }, []);
+  const setIncomeAmount = useCallback(
+    (userId: string, categoryId: string, amount: number) => {
+      const key = cellKey(userId, categoryId);
+      setIncomeValues((prev) => ({ ...prev, [key]: amount }));
 
-  const setPreSavingActual = useCallback((userId: string, categoryId: string, amount: number) => {
-    setPreSavingActuals((prev) => ({ ...prev, [cellKey(userId, categoryId)]: amount }));
-  }, []);
+      const existingTimer = incomeTimers.current.get(key);
+      if (existingTimer) clearTimeout(existingTimer);
+      setSavingIncomeCells((prev) => new Set(prev).add(key));
 
-  const save = useCallback(async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      const incomeItems = users.flatMap((u) =>
-        incomeCategories.map((c) => ({
-          year,
-          month,
-          userId: u.id,
-          categoryId: c.id,
-          amount: incomeValues[cellKey(u.id, c.id)] ?? 0,
-        }))
-      );
-      const preSavingItems = users.flatMap((u) =>
-        preSavingCategories.map((c) => ({
-          year,
-          month,
-          userId: u.id,
-          categoryId: c.id,
-          budgetAmount: preSavingBudgets[cellKey(u.id, c.id)] ?? 0,
-          actualAmount: preSavingActuals[cellKey(u.id, c.id)] ?? 0,
-        }))
-      );
-      if (incomeItems.length > 0) {
-        await incomesApi.bulkUpdateIncomes(incomeItems);
-      }
-      if (preSavingItems.length > 0) {
-        await preSavingsApi.bulkUpdatePreSavings(preSavingItems);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      throw e;
-    } finally {
-      setSaving(false);
-    }
-  }, [users, incomeCategories, preSavingCategories, incomeValues, preSavingBudgets, preSavingActuals, year, month]);
+      const timer = setTimeout(async () => {
+        incomeTimers.current.delete(key);
+        try {
+          await incomesApi.bulkUpdateIncomes([{ year, month, userId, categoryId, amount }]);
+        } catch (e) {
+          setError(e instanceof Error ? e.message : String(e));
+        } finally {
+          setSavingIncomeCells((prev) => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+        }
+      }, DEBOUNCE_MS);
+      incomeTimers.current.set(key, timer);
+    },
+    [year, month]
+  );
+
+  const schedulePreSavingSave = useCallback(
+    (userId: string, categoryId: string) => {
+      const key = cellKey(userId, categoryId);
+      const existingTimer = preSavingTimers.current.get(key);
+      if (existingTimer) clearTimeout(existingTimer);
+      setSavingPreSavingCells((prev) => new Set(prev).add(key));
+
+      const timer = setTimeout(async () => {
+        preSavingTimers.current.delete(key);
+        try {
+          await preSavingsApi.bulkUpdatePreSavings([
+            {
+              year,
+              month,
+              userId,
+              categoryId,
+              budgetAmount: preSavingBudgetsRef.current[key] ?? 0,
+              actualAmount: preSavingActualsRef.current[key] ?? 0,
+            },
+          ]);
+        } catch (e) {
+          setError(e instanceof Error ? e.message : String(e));
+        } finally {
+          setSavingPreSavingCells((prev) => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          });
+        }
+      }, DEBOUNCE_MS);
+      preSavingTimers.current.set(key, timer);
+    },
+    [year, month]
+  );
+
+  const setPreSavingBudget = useCallback(
+    (userId: string, categoryId: string, amount: number) => {
+      const key = cellKey(userId, categoryId);
+      preSavingBudgetsRef.current = { ...preSavingBudgetsRef.current, [key]: amount };
+      setPreSavingBudgets((prev) => ({ ...prev, [key]: amount }));
+      schedulePreSavingSave(userId, categoryId);
+    },
+    [schedulePreSavingSave]
+  );
+
+  const setPreSavingActual = useCallback(
+    (userId: string, categoryId: string, amount: number) => {
+      const key = cellKey(userId, categoryId);
+      preSavingActualsRef.current = { ...preSavingActualsRef.current, [key]: amount };
+      setPreSavingActuals((prev) => ({ ...prev, [key]: amount }));
+      schedulePreSavingSave(userId, categoryId);
+    },
+    [schedulePreSavingSave]
+  );
+
+  const isIncomeSaving = useCallback(
+    (userId: string, categoryId: string) => savingIncomeCells.has(cellKey(userId, categoryId)),
+    [savingIncomeCells]
+  );
+
+  const isPreSavingSaving = useCallback(
+    (userId: string, categoryId: string) => savingPreSavingCells.has(cellKey(userId, categoryId)),
+    [savingPreSavingCells]
+  );
 
   return {
     users,
@@ -120,12 +185,12 @@ export function useIncomeAndPreSavingForm(year: number, month: number) {
     preSavingBudgets,
     preSavingActuals,
     loading,
-    saving,
     error,
     setIncomeAmount,
     setPreSavingBudget,
     setPreSavingActual,
-    save,
+    isIncomeSaving,
+    isPreSavingSaving,
     cellKey,
   };
 }

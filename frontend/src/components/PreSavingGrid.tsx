@@ -7,6 +7,7 @@ interface Props {
   users: User[];
   budgets: Record<string, number>;
   actuals: Record<string, number>;
+  isSaving?: (userId: string, categoryId: string) => boolean;
   onBudgetChange: (userId: string, categoryId: string, amount: number) => void;
   onActualChange: (userId: string, categoryId: string, amount: number) => void;
 }
@@ -16,6 +17,7 @@ export function PreSavingGrid({
   users,
   budgets,
   actuals,
+  isSaving,
   onBudgetChange,
   onActualChange,
 }: Props) {
@@ -59,6 +61,7 @@ export function PreSavingGrid({
               </td>
               {users.map((u) => {
                 const key = `${u.id}:${c.id}`;
+                const saving = isSaving?.(u.id, c.id) ?? false;
                 return (
                   <Fragment key={u.id}>
                     <td className="px-3 py-2">
@@ -69,6 +72,7 @@ export function PreSavingGrid({
                         value={budgets[key] ?? 0}
                         onChange={(e) => onBudgetChange(u.id, c.id, Number(e.target.value))}
                       />
+                      {saving && <span className="block text-xs text-gray-400 dark:text-gray-500">保存中...</span>}
                     </td>
                     <td className="px-3 py-2">
                       <input
