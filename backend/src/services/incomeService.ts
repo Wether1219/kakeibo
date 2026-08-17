@@ -23,16 +23,6 @@ function validateInput(data: IncomeInput) {
   }
 }
 
-async function assertIncomeCategory(householdId: bigint, categoryId: bigint) {
-  const category = await prisma.category.findFirst({ where: { id: categoryId, householdId } });
-  if (!category) {
-    throw new IncomeValidationError('categoryIdが不正です');
-  }
-  if (category.type !== 'income') {
-    throw new IncomeValidationError('categoryIdは収入費目（type=income）である必要があります');
-  }
-}
-
 export async function listIncomes(
   householdId: bigint,
   filter: { year?: number; month?: number }
@@ -57,9 +47,23 @@ function incomeKey(i: { year: number; month: number; userId: bigint; categoryId:
 // 監査ログのbefore/after記録のため、upsert前の既存行をまとめて取得し結果と対にして返す
 export async function bulkUpsertIncomes(householdId: bigint, items: IncomeInput[]) {
   items.forEach(validateInput);
+
+  const categoryIds = Array.from(new Set(items.map((item) => item.categoryId)));
+  const categories =
+    categoryIds.length === 0
+      ? []
+      : await prisma.category.findMany({ where: { id: { in: categoryIds }, householdId } });
+  const categoryMap = new Map(categories.map((c) => [c.id.toString(), c]));
   for (const item of items) {
-    await assertIncomeCategory(householdId, item.categoryId);
+    const category = categoryMap.get(item.categoryId.toString());
+    if (!category) {
+      throw new IncomeValidationError('categoryIdが不正です');
+    }
+    if (category.type !== 'income') {
+      throw new IncomeValidationError('categoryIdは収入費目（type=income）である必要があります');
+    }
   }
+
   const existingRows =
     items.length === 0
       ? []

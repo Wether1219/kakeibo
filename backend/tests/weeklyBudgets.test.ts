@@ -140,6 +140,22 @@ describe('/api/v1/weekly-budgets', () => {
     expect(res.status).toBe(400);
   });
 
+  it('一部のみtype不一致の場合、バッチ全体が失敗し有効な項目も保存されない（費目の一括検証はitemごとに逐次DBアクセスせず事前に一括取得する）', async () => {
+    const res = await request(app)
+      .put('/api/v1/weekly-budgets/bulk')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
+      .send([baseItem({ weekNo: 3, budgetAmount: 9999 }), baseItem({ categoryId: incomeCategoryId })]);
+    expect(res.status).toBe(400);
+
+    const listRes = await request(app)
+      .get(`/api/v1/weekly-budgets?year=${YEAR}&month=${MONTH}`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
+    const week3 = listRes.body.find(
+      (r: { weekNo: number; categoryId: string }) => r.weekNo === 3 && r.categoryId === variableCategoryId
+    );
+    expect(week3?.budgetAmount ?? 0).toBe(0);
+  });
+
   it('weekNoが範囲外（0または7）は400', async () => {
     const resZero = await request(app)
       .put('/api/v1/weekly-budgets/bulk')

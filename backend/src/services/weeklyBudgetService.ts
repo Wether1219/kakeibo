@@ -34,18 +34,6 @@ function validateInput(data: WeeklyBudgetInput) {
   }
 }
 
-async function assertVariableExpenseCategory(householdId: bigint, categoryId: bigint) {
-  const category = await prisma.category.findFirst({ where: { id: categoryId, householdId } });
-  if (!category) {
-    throw new WeeklyBudgetValidationError('categoryIdが不正です');
-  }
-  if (category.type !== 'variable_expense') {
-    throw new WeeklyBudgetValidationError(
-      'categoryIdは変動費費目（type=variable_expense）である必要があります'
-    );
-  }
-}
-
 function weeklyBudgetKey(i: { year: number; month: number; weekNo: number; categoryId: bigint }) {
   return `${i.year}:${i.month}:${i.weekNo}:${i.categoryId}`;
 }
@@ -53,9 +41,25 @@ function weeklyBudgetKey(i: { year: number; month: number; weekNo: number; categ
 // 監査ログのbefore/after記録のため、upsert前の既存行をまとめて取得し結果と対にして返す
 export async function bulkUpsertWeeklyBudgets(householdId: bigint, items: WeeklyBudgetInput[]) {
   items.forEach(validateInput);
+
+  const categoryIds = Array.from(new Set(items.map((item) => item.categoryId)));
+  const categories =
+    categoryIds.length === 0
+      ? []
+      : await prisma.category.findMany({ where: { id: { in: categoryIds }, householdId } });
+  const categoryMap = new Map(categories.map((c) => [c.id.toString(), c]));
   for (const item of items) {
-    await assertVariableExpenseCategory(householdId, item.categoryId);
+    const category = categoryMap.get(item.categoryId.toString());
+    if (!category) {
+      throw new WeeklyBudgetValidationError('categoryIdが不正です');
+    }
+    if (category.type !== 'variable_expense') {
+      throw new WeeklyBudgetValidationError(
+        'categoryIdは変動費費目（type=variable_expense）である必要があります'
+      );
+    }
   }
+
   const existingRows =
     items.length === 0
       ? []

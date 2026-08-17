@@ -27,16 +27,6 @@ function validateInput(data: PreSavingInput) {
   }
 }
 
-async function assertPreSavingCategory(householdId: bigint, categoryId: bigint) {
-  const category = await prisma.category.findFirst({ where: { id: categoryId, householdId } });
-  if (!category) {
-    throw new PreSavingValidationError('categoryIdが不正です');
-  }
-  if (category.type !== 'pre_saving') {
-    throw new PreSavingValidationError('categoryIdは先取り貯金費目（type=pre_saving）である必要があります');
-  }
-}
-
 export async function listPreSavings(
   householdId: bigint,
   filter: { year?: number; month?: number }
@@ -61,9 +51,23 @@ function preSavingKey(i: { year: number; month: number; userId: bigint; category
 // 監査ログのbefore/after記録のため、upsert前の既存行をまとめて取得し結果と対にして返す
 export async function bulkUpsertPreSavings(householdId: bigint, items: PreSavingInput[]) {
   items.forEach(validateInput);
+
+  const categoryIds = Array.from(new Set(items.map((item) => item.categoryId)));
+  const categories =
+    categoryIds.length === 0
+      ? []
+      : await prisma.category.findMany({ where: { id: { in: categoryIds }, householdId } });
+  const categoryMap = new Map(categories.map((c) => [c.id.toString(), c]));
   for (const item of items) {
-    await assertPreSavingCategory(householdId, item.categoryId);
+    const category = categoryMap.get(item.categoryId.toString());
+    if (!category) {
+      throw new PreSavingValidationError('categoryIdが不正です');
+    }
+    if (category.type !== 'pre_saving') {
+      throw new PreSavingValidationError('categoryIdは先取り貯金費目（type=pre_saving）である必要があります');
+    }
   }
+
   const existingRows =
     items.length === 0
       ? []
