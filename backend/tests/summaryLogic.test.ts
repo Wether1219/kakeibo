@@ -5,7 +5,9 @@ import {
   calculateMonthlySummaryForUser,
   calculateRatios,
   calculateSettlement,
+  calculateSuggestedMonthlyBudget,
   calculateWeekNumber,
+  distributeBudgetAcrossWeeks,
   SettlementTransaction,
 } from '../src/services/summaryLogic';
 
@@ -257,5 +259,58 @@ describe('calculateSettlement（割り勘・立て替え精算額の算出）', 
       paidForOtherTotal: 0,
       paidForOtherOtherPaidTotal: 0,
     });
+  });
+});
+
+describe('calculateSuggestedMonthlyBudget（週次予算の自動入力：月合計予算算出）', () => {
+  it('前月までの日次平均×当該月の日数で算出される', () => {
+    // 1月〜2月末（59日）で合計29500円 → 日次平均500円 × 3月31日 = 15500円
+    expect(calculateSuggestedMonthlyBudget(29500, 59, 31)).toBe(15500);
+  });
+
+  it('daysElapsedが0以下の場合は0を返す（1月など前月データが無い場合）', () => {
+    expect(calculateSuggestedMonthlyBudget(10000, 0, 31)).toBe(0);
+  });
+
+  it('割り切れない場合は四捨五入する', () => {
+    // 日次平均333.33... × 30 = 9999.99... → 10000円
+    expect(calculateSuggestedMonthlyBudget(1000, 3, 30)).toBe(10000);
+  });
+});
+
+describe('distributeBudgetAcrossWeeks（週次予算の自動入力：週への配分）', () => {
+  it('日数比で按分し、端数は最終週に加算する', () => {
+    // 31日を7/7/7/7/3日の5週に分割、月合計3100円
+    const result = distributeBudgetAcrossWeeks(3100, [
+      { weekNo: 1, days: 7 },
+      { weekNo: 2, days: 7 },
+      { weekNo: 3, days: 7 },
+      { weekNo: 4, days: 7 },
+      { weekNo: 5, days: 3 },
+    ]);
+    expect(result).toEqual([
+      { weekNo: 1, amount: 700 },
+      { weekNo: 2, amount: 700 },
+      { weekNo: 3, amount: 700 },
+      { weekNo: 4, amount: 700 },
+      { weekNo: 5, amount: 300 },
+    ]);
+    expect(result.reduce((sum, w) => sum + w.amount, 0)).toBe(3100);
+  });
+
+  it('端数が出る配分でも合計が月合計予算と一致する', () => {
+    const result = distributeBudgetAcrossWeeks(10000, [
+      { weekNo: 1, days: 6 },
+      { weekNo: 2, days: 7 },
+      { weekNo: 3, days: 7 },
+      { weekNo: 4, days: 7 },
+      { weekNo: 5, days: 4 },
+    ]);
+    expect(result.reduce((sum, w) => sum + w.amount, 0)).toBe(10000);
+  });
+
+  it('週の合計日数が0件の場合は全週0円になる', () => {
+    const result = distributeBudgetAcrossWeeks(5000, [{ weekNo: 1, days: 0 }]);
+    expect(result).toEqual([{ weekNo: 1, amount: 0 }]);
   });
 });

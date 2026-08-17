@@ -231,4 +231,106 @@ describe('/api/v1/weekly-budgets', () => {
     // 3月は第6週まで（4/1以降の第7週は含まれない）
     expect(res.body.some((r: { weekNo: number }) => r.weekNo > 6)).toBe(false);
   });
+
+  it('未入力の費目は年間推移（1月〜前月）の実績から自動算出した金額が週の日数比で入り、hasBudget=falseになる', async () => {
+    // 1月・2月（60日間）で合計1200円 → 日次平均20円 × 3月31日 = 620円を、週の日数比（2/7/7/7/7/1）で配分
+    await prisma.transaction.create({
+      data: {
+        householdId: TEST_HOUSEHOLD_ID,
+        transactionDate: new Date(Date.UTC(YEAR, 0, 15)),
+        categoryId: BigInt(variableCategoryId),
+        splitType: 'self',
+        userId: USER_A,
+        amount: 600,
+        createdBy: USER_A,
+      },
+    });
+    await prisma.transaction.create({
+      data: {
+        householdId: TEST_HOUSEHOLD_ID,
+        transactionDate: new Date(Date.UTC(YEAR, 1, 10)),
+        categoryId: BigInt(variableCategoryId),
+        splitType: 'self',
+        userId: USER_A,
+        amount: 600,
+        createdBy: USER_A,
+      },
+    });
+
+    const res = await request(app)
+      .get(`/api/v1/weekly-budgets?year=${YEAR}&month=${MONTH}`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
+    expect(res.status).toBe(200);
+
+    const byWeek = (weekNo: number) =>
+      res.body.find(
+        (r: { weekNo: number; categoryId: string }) =>
+          r.weekNo === weekNo && r.categoryId === variableCategoryId
+      );
+
+    expect(byWeek(1)).toMatchObject({ hasBudget: false, suggestedAmount: 40, budgetAmount: 0 });
+    expect(byWeek(2)).toMatchObject({ hasBudget: false, suggestedAmount: 140, budgetAmount: 0 });
+    expect(byWeek(6)).toMatchObject({ hasBudget: false, suggestedAmount: 20, budgetAmount: 0 });
+  });
+
+  it('1月は年内に前月データが無いため、直近12ヶ月（前年1月〜前年12月）の実績を参照する', async () => {
+    // 前年（2023年、365日）に合計600円 → 日次平均約1.6438円 × 1月31日 = 51円を、
+    // 2024年1月の週の日数比（6/7/7/7/4）で配分（端数は最終週へ）
+    await prisma.transaction.create({
+      data: {
+        householdId: TEST_HOUSEHOLD_ID,
+        transactionDate: new Date(Date.UTC(YEAR - 1, 11, 15)),
+        categoryId: BigInt(variableCategoryId),
+        splitType: 'self',
+        userId: USER_A,
+        amount: 600,
+        createdBy: USER_A,
+      },
+    });
+
+    const res = await request(app)
+      .get(`/api/v1/weekly-budgets?year=${YEAR}&month=1`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
+    expect(res.status).toBe(200);
+
+    const byWeek = (weekNo: number) =>
+      res.body.find(
+        (r: { weekNo: number; categoryId: string }) =>
+          r.weekNo === weekNo && r.categoryId === variableCategoryId
+      );
+
+    expect(byWeek(1)).toMatchObject({ hasBudget: false, suggestedAmount: 9 });
+    expect(byWeek(2)).toMatchObject({ hasBudget: false, suggestedAmount: 11 });
+    expect(byWeek(5)).toMatchObject({ hasBudget: false, suggestedAmount: 9 });
+
+    const total = [1, 2, 3, 4, 5].reduce((sum, w) => sum + byWeek(w).suggestedAmount, 0);
+    expect(total).toBe(51);
+  });
+
+  it('1月かつ前年データが無い場合はsuggestedAmountが0になる', async () => {
+    const res = await request(app)
+      .get(`/api/v1/weekly-budgets?year=${YEAR}&month=1`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
+    expect(res.status).toBe(200);
+    expect(
+      res.body.every((r: { suggestedAmount: number }) => r.suggestedAmount === 0)
+    ).toBe(true);
+  });
+
+  it('既に保存済みの費目はhasBudget=trueになり、自動算出値ではなく保存値が返る', async () => {
+    await request(app)
+      .put('/api/v1/weekly-budgets/bulk')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
+      .send([baseItem({ weekNo: 1, budgetAmount: 999 })]);
+
+    const res = await request(app)
+      .get(`/api/v1/weekly-budgets?year=${YEAR}&month=${MONTH}`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
+
+    const week1 = res.body.find(
+      (r: { weekNo: number; categoryId: string }) =>
+        r.weekNo === 1 && r.categoryId === variableCategoryId
+    );
+    expect(week1).toMatchObject({ hasBudget: true, budgetAmount: 999 });
+  });
 });

@@ -8,6 +8,8 @@ export interface WeeklyBudgetWithActual {
   budgetAmount: number;
   actualAmount: number;
   diff: number;
+  hasBudget: boolean;
+  suggestedAmount: number;
 }
 
 export interface WeeklyBudgetBulkItem {

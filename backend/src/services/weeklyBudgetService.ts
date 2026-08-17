@@ -1,5 +1,11 @@
 import { prisma } from '../prisma';
-import { apportionTransactionAmount, calculateWeekNumber } from './summaryLogic';
+import {
+  apportionTransactionAmount,
+  calculateSuggestedMonthlyBudget,
+  calculateWeekNumber,
+  distributeBudgetAcrossWeeks,
+  WeekDayCount,
+} from './summaryLogic';
 
 export class WeeklyBudgetValidationError extends Error {}
 
@@ -111,6 +117,87 @@ export interface WeeklyBudgetWithActual {
   budgetAmount: number;
   actualAmount: number;
   diff: number;
+  hasBudget: boolean;
+  suggestedAmount: number;
+}
+
+function daysInMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function weekDayCountsOfMonth(year: number, month: number): WeekDayCount[] {
+  const counts = new Map<number, number>();
+  const total = daysInMonth(year, month);
+  for (let d = 1; d <= total; d++) {
+    const weekNo = calculateWeekNumber(new Date(Date.UTC(year, month - 1, d)));
+    counts.set(weekNo, (counts.get(weekNo) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([weekNo, days]) => ({ weekNo, days }));
+}
+
+// 週次予算の自動入力：その年の1月〜前月までの世帯合計実績から月合計予算を算出し、各週へ日数比で配分する。
+// 1月は年内に前月データが存在しないため、直近12ヶ月（＝前年1月〜前年12月の1年間）を参照する。
+async function calculateSuggestedBudgets(
+  householdId: bigint,
+  year: number,
+  month: number
+): Promise<Map<string, number>> {
+  const suggestionMap = new Map<string, number>();
+
+  const cumStart =
+    month === 1 ? new Date(Date.UTC(year - 1, 0, 1)) : new Date(Date.UTC(year, 0, 1));
+  const cumEnd = month === 1 ? new Date(Date.UTC(year, 0, 1)) : new Date(Date.UTC(year, month - 1, 1));
+  const daysElapsed = Math.round((cumEnd.getTime() - cumStart.getTime()) / (24 * 60 * 60 * 1000));
+
+  const [users, cumulativeTransactions] = await Promise.all([
+    prisma.user.findMany({ where: { householdId } }),
+    prisma.transaction.findMany({
+      where: {
+        householdId,
+        transactionDate: { gte: cumStart, lt: cumEnd },
+        category: { type: 'variable_expense' },
+      },
+    }),
+  ]);
+
+  const cumulativeTotalByCategory = new Map<string, number>();
+  for (const tx of cumulativeTransactions) {
+    const householdAmount = users.reduce(
+      (sum, user) =>
+        sum +
+        apportionTransactionAmount(
+          {
+            splitType: tx.splitType,
+            userId: tx.userId,
+            createdBy: tx.createdBy,
+            amount: Number(tx.amount),
+          },
+          user.id
+        ),
+      0
+    );
+    const key = tx.categoryId.toString();
+    cumulativeTotalByCategory.set(key, (cumulativeTotalByCategory.get(key) ?? 0) + householdAmount);
+  }
+
+  const weekDayCounts = weekDayCountsOfMonth(year, month);
+  const currentDaysInMonth = daysInMonth(year, month);
+
+  for (const [categoryId, cumulativeTotal] of cumulativeTotalByCategory) {
+    const monthlyBudget = calculateSuggestedMonthlyBudget(
+      cumulativeTotal,
+      daysElapsed,
+      currentDaysInMonth
+    );
+    const distribution = distributeBudgetAcrossWeeks(monthlyBudget, weekDayCounts);
+    for (const { weekNo, amount } of distribution) {
+      suggestionMap.set(`${weekNo}:${categoryId}`, amount);
+    }
+  }
+
+  return suggestionMap;
 }
 
 export async function listWeeklyBudgetsWithActual(
@@ -123,7 +210,7 @@ export async function listWeeklyBudgetsWithActual(
   }
   const { start, end } = monthRange(year, month);
 
-  const [budgets, categories, users, transactions] = await Promise.all([
+  const [budgets, categories, users, transactions, suggestionMap] = await Promise.all([
     prisma.weeklyBudget.findMany({ where: { householdId, year, month } }),
     prisma.category.findMany({
       where: { householdId, type: 'variable_expense', isActive: true },
@@ -137,6 +224,7 @@ export async function listWeeklyBudgetsWithActual(
         category: { type: 'variable_expense' },
       },
     }),
+    calculateSuggestedBudgets(householdId, year, month),
   ]);
 
   // 週×費目ごとの実績を5.1按分ロジックで算出。世帯内の全ユーザー分を合算することで世帯合計になる。
@@ -162,8 +250,11 @@ export async function listWeeklyBudgetsWithActual(
   }
 
   const budgetMap = new Map<string, number>();
+  const budgetExistsSet = new Set<string>();
   for (const b of budgets) {
-    budgetMap.set(`${b.weekNo}:${b.categoryId}`, Number(b.budgetAmount));
+    const key = `${b.weekNo}:${b.categoryId}`;
+    budgetMap.set(key, Number(b.budgetAmount));
+    budgetExistsSet.add(key);
   }
 
   // SC06「月の日数に応じ自動表示切替」に対応するため、月末を含む週まではデータの有無に関わらず表示対象とする。
@@ -187,6 +278,8 @@ export async function listWeeklyBudgetsWithActual(
         budgetAmount,
         actualAmount,
         diff: budgetAmount - actualAmount,
+        hasBudget: budgetExistsSet.has(key),
+        suggestedAmount: suggestionMap.get(key) ?? 0,
       });
     }
   }

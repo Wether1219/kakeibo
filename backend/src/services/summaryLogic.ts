@@ -168,3 +168,51 @@ export function calculateSettlement(
 
   return { breakdown, netAmount: Math.abs(roundedNet), payerIndex };
 }
+
+/**
+ * 週次予算の自動入力：月合計予算の算出。
+ * その年の1月〜前月までの世帯合計実績を前月までの経過日数で割った日次平均に、
+ * 当該月の日数を掛けて月合計予算とする。daysElapsed<=0（1月など前月データが無い月）は0とする。
+ */
+export function calculateSuggestedMonthlyBudget(
+  cumulativeActualTotal: number,
+  daysElapsed: number,
+  daysInMonth: number
+): number {
+  if (daysElapsed <= 0) {
+    return 0;
+  }
+  return Math.round((cumulativeActualTotal / daysElapsed) * daysInMonth);
+}
+
+export interface WeekDayCount {
+  weekNo: number;
+  days: number;
+}
+
+export interface WeeklyBudgetDistribution {
+  weekNo: number;
+  amount: number;
+}
+
+/**
+ * 週次予算の自動入力：月合計予算を各週の日数比で配分する。
+ * 日数比の切り捨て後の端数は最終週（weekDayCountsの末尾）に加算し、合計がmonthlyBudgetと一致するようにする。
+ */
+export function distributeBudgetAcrossWeeks(
+  monthlyBudget: number,
+  weekDayCounts: WeekDayCount[]
+): WeeklyBudgetDistribution[] {
+  const totalDays = weekDayCounts.reduce((sum, w) => sum + w.days, 0);
+  if (totalDays === 0) {
+    return weekDayCounts.map((w) => ({ weekNo: w.weekNo, amount: 0 }));
+  }
+  const flooredAmounts = weekDayCounts.map((w) => Math.floor((monthlyBudget * w.days) / totalDays));
+  const flooredSum = flooredAmounts.reduce((sum, a) => sum + a, 0);
+  const remainder = monthlyBudget - flooredSum;
+  const result = weekDayCounts.map((w, i) => ({ weekNo: w.weekNo, amount: flooredAmounts[i] }));
+  if (result.length > 0) {
+    result[result.length - 1].amount += remainder;
+  }
+  return result;
+}

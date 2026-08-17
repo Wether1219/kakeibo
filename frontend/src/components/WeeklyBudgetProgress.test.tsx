@@ -12,6 +12,8 @@ function row(overrides: Partial<WeeklyBudgetWithActual>): WeeklyBudgetWithActual
     budgetAmount: 5000,
     actualAmount: 0,
     diff: 5000,
+    hasBudget: true,
+    suggestedAmount: 0,
     ...overrides,
   };
 }

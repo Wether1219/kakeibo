@@ -6,10 +6,18 @@ interface Props {
   weeks: number[];
   budgets: Record<string, number>;
   actuals: Record<string, number>;
+  suggestedCells?: Set<string>;
   onBudgetChange: (weekNo: number, categoryId: string, amount: number) => void;
 }
 
-export function WeeklyBudgetGrid({ categories, weeks, budgets, actuals, onBudgetChange }: Props) {
+export function WeeklyBudgetGrid({
+  categories,
+  weeks,
+  budgets,
+  actuals,
+  suggestedCells,
+  onBudgetChange,
+}: Props) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full border border-gray-200 dark:border-gray-700 text-sm">
@@ -48,13 +56,18 @@ export function WeeklyBudgetGrid({ categories, weeks, budgets, actuals, onBudget
                 const actual = actuals[key] ?? 0;
                 const budget = budgets[key] ?? 0;
                 const diff = budget - actual;
+                const isSuggested = suggestedCells?.has(key) ?? false;
                 return (
                   <Fragment key={w}>
                     <td className="px-3 py-2">
                       <input
                         type="number"
                         min={0}
-                        className="w-20 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1 text-right"
+                        className={`w-20 border rounded px-2 py-1 text-right dark:text-gray-100 ${
+                          isSuggested
+                            ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30'
+                            : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800'
+                        }`}
                         value={budget}
                         onChange={(e) => onBudgetChange(w, c.id, Number(e.target.value))}
                       />

@@ -10,7 +10,7 @@ export function WeeklyBudget() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  const { categories, weeks, budgets, actuals, loading, saving, error, setBudget, save } =
+  const { categories, weeks, budgets, actuals, suggestedCells, loading, saving, error, setBudget, save } =
     useWeeklyBudgetForm(year, month);
 
   const handleSave = async () => {
@@ -66,8 +66,14 @@ export function WeeklyBudget() {
               weeks={weeks}
               budgets={budgets}
               actuals={actuals}
+              suggestedCells={suggestedCells}
               onBudgetChange={setBudget}
             />
+            {suggestedCells.size > 0 && (
+              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                黄色背景の予算は前月までの実績から自動算出した金額です（未保存。編集・保存できます）
+              </p>
+            )}
           </section>
 
           <div className="flex items-center gap-3">
