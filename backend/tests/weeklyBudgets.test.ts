@@ -16,6 +16,7 @@ const MONTH = 3;
 
 let variableCategoryId: string;
 let incomeCategoryId: string;
+let furusatoCategoryId: string;
 
 async function resetHousehold(id: bigint) {
   await prisma.auditLog.deleteMany({ where: { householdId: id } });
@@ -48,6 +49,10 @@ beforeAll(async () => {
     data: { householdId: TEST_HOUSEHOLD_ID, type: 'income', name: '給与' },
   });
   incomeCategoryId = incomeCategory.id.toString();
+  const furusatoCategory = await prisma.category.create({
+    data: { householdId: TEST_HOUSEHOLD_ID, type: 'variable_expense', name: 'ふるさと納税', icon: '🌾' },
+  });
+  furusatoCategoryId = furusatoCategory.id.toString();
 });
 
 beforeEach(async () => {
@@ -121,7 +126,9 @@ describe('/api/v1/weekly-budgets', () => {
       .get(`/api/v1/weekly-budgets?year=${YEAR}&month=${MONTH}`)
       .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
     expect(listRes.status).toBe(200);
-    const week1 = listRes.body.find((r: { weekNo: number }) => r.weekNo === 1);
+    const week1 = listRes.body.find(
+      (r: { weekNo: number; categoryId: string }) => r.weekNo === 1 && r.categoryId === variableCategoryId
+    );
     expect(week1.budgetAmount).toBe(6000);
   });
 
@@ -317,6 +324,24 @@ describe('/api/v1/weekly-budgets', () => {
     ).toBe(true);
   });
 
+  it('DBに0円で保存済みのセルも未入力扱いとなり、自動算出値がsuggestedAmountとして返る（hasBudget=false）', async () => {
+    // 過去の一括保存で全セルに0円が保存されるケース（save()は編集していないセルも含め全件送信するため）を再現
+    await request(app)
+      .put('/api/v1/weekly-budgets/bulk')
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A))
+      .send([baseItem({ weekNo: 1, budgetAmount: 0 })]);
+
+    const res = await request(app)
+      .get(`/api/v1/weekly-budgets?year=${YEAR}&month=${MONTH}`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
+
+    const week1 = res.body.find(
+      (r: { weekNo: number; categoryId: string }) =>
+        r.weekNo === 1 && r.categoryId === variableCategoryId
+    );
+    expect(week1).toMatchObject({ hasBudget: false, budgetAmount: 0 });
+  });
+
   it('既に保存済みの費目はhasBudget=trueになり、自動算出値ではなく保存値が返る', async () => {
     await request(app)
       .put('/api/v1/weekly-budgets/bulk')
@@ -332,5 +357,83 @@ describe('/api/v1/weekly-budgets', () => {
         r.weekNo === 1 && r.categoryId === variableCategoryId
     );
     expect(week1).toMatchObject({ hasBudget: true, budgetAmount: 999 });
+  });
+
+  it('ふるさと納税は「前年合計－当年（前月まで）使用分」の残り枠が第1週にまとめて表示される', async () => {
+    // 前年（2023年）合計30000円
+    await prisma.transaction.create({
+      data: {
+        householdId: TEST_HOUSEHOLD_ID,
+        transactionDate: new Date(Date.UTC(YEAR - 1, 10, 1)),
+        categoryId: BigInt(furusatoCategoryId),
+        splitType: 'self',
+        userId: USER_A,
+        amount: 30000,
+        createdBy: USER_A,
+      },
+    });
+    // 当年（2024年1月〜前月=2月）に既に10000円使用済み
+    await prisma.transaction.create({
+      data: {
+        householdId: TEST_HOUSEHOLD_ID,
+        transactionDate: new Date(Date.UTC(YEAR, 0, 10)),
+        categoryId: BigInt(furusatoCategoryId),
+        splitType: 'self',
+        userId: USER_A,
+        amount: 10000,
+        createdBy: USER_A,
+      },
+    });
+
+    const res = await request(app)
+      .get(`/api/v1/weekly-budgets?year=${YEAR}&month=${MONTH}`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
+    expect(res.status).toBe(200);
+
+    const byWeek = (weekNo: number) =>
+      res.body.find(
+        (r: { weekNo: number; categoryId: string }) =>
+          r.weekNo === weekNo && r.categoryId === furusatoCategoryId
+      );
+
+    // 残り枠 = 30000 - 10000 = 20000円、第1週にまとめて表示、他週は0円
+    expect(byWeek(1)).toMatchObject({ hasBudget: false, suggestedAmount: 20000 });
+    expect(byWeek(2)).toMatchObject({ suggestedAmount: 0 });
+    expect(byWeek(6)).toMatchObject({ suggestedAmount: 0 });
+  });
+
+  it('ふるさと納税で当年使用分が前年合計を超えている場合はマイナスにならず0円になる', async () => {
+    await prisma.transaction.create({
+      data: {
+        householdId: TEST_HOUSEHOLD_ID,
+        transactionDate: new Date(Date.UTC(YEAR - 1, 10, 1)),
+        categoryId: BigInt(furusatoCategoryId),
+        splitType: 'self',
+        userId: USER_A,
+        amount: 10000,
+        createdBy: USER_A,
+      },
+    });
+    await prisma.transaction.create({
+      data: {
+        householdId: TEST_HOUSEHOLD_ID,
+        transactionDate: new Date(Date.UTC(YEAR, 0, 10)),
+        categoryId: BigInt(furusatoCategoryId),
+        splitType: 'self',
+        userId: USER_A,
+        amount: 30000,
+        createdBy: USER_A,
+      },
+    });
+
+    const res = await request(app)
+      .get(`/api/v1/weekly-budgets?year=${YEAR}&month=${MONTH}`)
+      .set('Authorization', authHeader(TEST_HOUSEHOLD_ID, USER_A));
+
+    const week1 = res.body.find(
+      (r: { weekNo: number; categoryId: string }) =>
+        r.weekNo === 1 && r.categoryId === furusatoCategoryId
+    );
+    expect(week1).toMatchObject({ suggestedAmount: 0 });
   });
 });

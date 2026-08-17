@@ -137,12 +137,72 @@ function weekDayCountsOfMonth(year: number, month: number): WeekDayCount[] {
     .map(([weekNo, days]) => ({ weekNo, days }));
 }
 
+// ふるさと納税は年間の寄附上限枠に対する残り枠を管理する性質上、他費目の日次平均による予測ではなく
+// 「前年合計－当年（前月まで）使用分」の残り枠をそのまま月初週にまとめて表示する特別扱いとする。
+const FURUSATO_NOZEI_CATEGORY_NAME = 'ふるさと納税';
+
+function householdTotal(
+  transactions: { splitType: 'self' | 'shared'; userId: bigint | null; createdBy: bigint; amount: unknown }[],
+  users: { id: bigint }[]
+): number {
+  return transactions.reduce(
+    (sum, tx) =>
+      sum +
+      users.reduce(
+        (s, user) =>
+          s +
+          apportionTransactionAmount(
+            {
+              splitType: tx.splitType,
+              userId: tx.userId,
+              createdBy: tx.createdBy,
+              amount: Number(tx.amount),
+            },
+            user.id
+          ),
+        0
+      ),
+    0
+  );
+}
+
+// ふるさと納税の残り枠＝前年（1〜12月）の世帯合計実績－当年（1月〜前月まで）の世帯合計実績（マイナスにはしない）
+async function calculateFurusatoNozeiRemainingBudget(
+  householdId: bigint,
+  categoryId: bigint,
+  year: number,
+  month: number,
+  users: { id: bigint }[]
+): Promise<number> {
+  const prevYearStart = new Date(Date.UTC(year - 1, 0, 1));
+  const prevYearEnd = new Date(Date.UTC(year, 0, 1));
+  const usedThisYearEnd = new Date(Date.UTC(year, month - 1, 1));
+
+  const [prevYearTransactions, usedThisYearTransactions] = await Promise.all([
+    prisma.transaction.findMany({
+      where: { householdId, categoryId, transactionDate: { gte: prevYearStart, lt: prevYearEnd } },
+    }),
+    prisma.transaction.findMany({
+      where: {
+        householdId,
+        categoryId,
+        transactionDate: { gte: prevYearEnd, lt: usedThisYearEnd },
+      },
+    }),
+  ]);
+
+  const previousYearTotal = householdTotal(prevYearTransactions, users);
+  const usedThisYear = householdTotal(usedThisYearTransactions, users);
+  return Math.max(previousYearTotal - usedThisYear, 0);
+}
+
 // 週次予算の自動入力：その年の1月〜前月までの世帯合計実績から月合計予算を算出し、各週へ日数比で配分する。
 // 1月は年内に前月データが存在しないため、直近12ヶ月（＝前年1月〜前年12月の1年間）を参照する。
 async function calculateSuggestedBudgets(
   householdId: bigint,
   year: number,
-  month: number
+  month: number,
+  categories: { id: bigint; name: string }[]
 ): Promise<Map<string, number>> {
   const suggestionMap = new Map<string, number>();
 
@@ -162,23 +222,14 @@ async function calculateSuggestedBudgets(
     }),
   ]);
 
+  const furusatoCategory = categories.find((c) => c.name === FURUSATO_NOZEI_CATEGORY_NAME);
+  const furusatoCategoryId = furusatoCategory?.id.toString();
+
   const cumulativeTotalByCategory = new Map<string, number>();
   for (const tx of cumulativeTransactions) {
-    const householdAmount = users.reduce(
-      (sum, user) =>
-        sum +
-        apportionTransactionAmount(
-          {
-            splitType: tx.splitType,
-            userId: tx.userId,
-            createdBy: tx.createdBy,
-            amount: Number(tx.amount),
-          },
-          user.id
-        ),
-      0
-    );
     const key = tx.categoryId.toString();
+    if (key === furusatoCategoryId) continue;
+    const householdAmount = householdTotal([tx], users);
     cumulativeTotalByCategory.set(key, (cumulativeTotalByCategory.get(key) ?? 0) + householdAmount);
   }
 
@@ -197,6 +248,18 @@ async function calculateSuggestedBudgets(
     }
   }
 
+  if (furusatoCategory) {
+    const remaining = await calculateFurusatoNozeiRemainingBudget(
+      householdId,
+      furusatoCategory.id,
+      year,
+      month,
+      users
+    );
+    const firstWeekNo = weekDayCounts[0]?.weekNo ?? 1;
+    suggestionMap.set(`${firstWeekNo}:${furusatoCategoryId}`, remaining);
+  }
+
   return suggestionMap;
 }
 
@@ -210,12 +273,13 @@ export async function listWeeklyBudgetsWithActual(
   }
   const { start, end } = monthRange(year, month);
 
-  const [budgets, categories, users, transactions, suggestionMap] = await Promise.all([
+  const categories = await prisma.category.findMany({
+    where: { householdId, type: 'variable_expense', isActive: true },
+    orderBy: { sortOrder: 'asc' },
+  });
+
+  const [budgets, users, transactions, suggestionMap] = await Promise.all([
     prisma.weeklyBudget.findMany({ where: { householdId, year, month } }),
-    prisma.category.findMany({
-      where: { householdId, type: 'variable_expense', isActive: true },
-      orderBy: { sortOrder: 'asc' },
-    }),
     prisma.user.findMany({ where: { householdId } }),
     prisma.transaction.findMany({
       where: {
@@ -224,7 +288,7 @@ export async function listWeeklyBudgetsWithActual(
         category: { type: 'variable_expense' },
       },
     }),
-    calculateSuggestedBudgets(householdId, year, month),
+    calculateSuggestedBudgets(householdId, year, month, categories),
   ]);
 
   // 週×費目ごとの実績を5.1按分ロジックで算出。世帯内の全ユーザー分を合算することで世帯合計になる。
@@ -250,11 +314,9 @@ export async function listWeeklyBudgetsWithActual(
   }
 
   const budgetMap = new Map<string, number>();
-  const budgetExistsSet = new Set<string>();
   for (const b of budgets) {
     const key = `${b.weekNo}:${b.categoryId}`;
     budgetMap.set(key, Number(b.budgetAmount));
-    budgetExistsSet.add(key);
   }
 
   // SC06「月の日数に応じ自動表示切替」に対応するため、月末を含む週まではデータの有無に関わらず表示対象とする。
@@ -278,7 +340,9 @@ export async function listWeeklyBudgetsWithActual(
         budgetAmount,
         actualAmount,
         diff: budgetAmount - actualAmount,
-        hasBudget: budgetExistsSet.has(key),
+        // DBに行があっても金額が0円のセルは「未入力」として扱う（過去の一括保存で全セルに0円が保存されるため、
+        // 行の有無だけでは実際に入力済みかを判定できない）
+        hasBudget: budgetAmount > 0,
         suggestedAmount: suggestionMap.get(key) ?? 0,
       });
     }
